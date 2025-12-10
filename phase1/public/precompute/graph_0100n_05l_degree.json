@@ -1,0 +1,1539 @@
+{
+  "metadata": {
+    "config": {
+      "nodes": 100,
+      "layers": 5,
+      "method": "degree",
+      "balance": false,
+      "gov_cap": null
+    },
+    "node_count": 100,
+    "edge_count": 45,
+    "domain_distribution": {
+      "Education": 21,
+      "Economic": 23,
+      "Governance": 43,
+      "Demographics": 1,
+      "Mixed": 9,
+      "Health": 1,
+      "Environment": 2
+    },
+    "domain_percentages": {
+      "Education": 21.0,
+      "Economic": 23.0,
+      "Governance": 43.0,
+      "Demographics": 1.0,
+      "Mixed": 9.0,
+      "Health": 1.0,
+      "Environment": 2.0
+    },
+    "governance_pct": 43.0,
+    "layer_bands": [
+      [
+        0
+      ],
+      [
+        1,
+        2,
+        3,
+        4,
+        5
+      ],
+      [
+        6,
+        7,
+        8,
+        9,
+        10,
+        11,
+        12,
+        13,
+        14
+      ],
+      [
+        15,
+        16,
+        17,
+        18
+      ],
+      [
+        19,
+        20
+      ]
+    ]
+  },
+  "nodes": [
+    {
+      "id": "REPR.1.G3.CP",
+      "label": "Repetition Rate - Primary (%)",
+      "causal_layer": 18,
+      "domain": "Education",
+      "score": 1.0,
+      "is_outcome": false,
+      "in_degree": 609,
+      "out_degree": 0,
+      "display_layer": 3,
+      "band_size": 4
+    },
+    {
+      "id": "REPR.1.G2.F.CP",
+      "label": "Repetition Rate - Primary, Female (%)",
+      "causal_layer": 19,
+      "domain": "Education",
+      "score": 0.9146141215106732,
+      "is_outcome": true,
+      "in_degree": 557,
+      "out_degree": 0,
+      "display_layer": 4,
+      "band_size": 2
+    },
+    {
+      "id": "REPR.1.G3.M.CP",
+      "label": "Repetition Rate - Primary, Male (%)",
+      "causal_layer": 18,
+      "domain": "Education",
+      "score": 0.8899835796387521,
+      "is_outcome": false,
+      "in_degree": 542,
+      "out_degree": 0,
+      "display_layer": 3,
+      "band_size": 4
+    },
+    {
+      "id": "REPR.1.G2.CP",
+      "label": "Repetition Rate - Primary (%)",
+      "causal_layer": 19,
+      "domain": "Education",
+      "score": 0.8669950738916257,
+      "is_outcome": true,
+      "in_degree": 528,
+      "out_degree": 0,
+      "display_layer": 4,
+      "band_size": 2
+    },
+    {
+      "id": "REPR.1.G3.F.CP",
+      "label": "Repetition Rate - Primary, Female (%)",
+      "causal_layer": 20,
+      "domain": "Education",
+      "score": 0.47126436781609193,
+      "is_outcome": true,
+      "in_degree": 287,
+      "out_degree": 0,
+      "display_layer": 4,
+      "band_size": 2
+    },
+    {
+      "id": "20063",
+      "label": "ICP Category 20063",
+      "causal_layer": 19,
+      "domain": "Economic",
+      "score": 0.39080459770114945,
+      "is_outcome": false,
+      "in_degree": 238,
+      "out_degree": 0,
+      "display_layer": 4,
+      "band_size": 2
+    },
+    {
+      "id": "20062",
+      "label": "ICP Category 20062",
+      "causal_layer": 18,
+      "domain": "Economic",
+      "score": 0.37110016420361247,
+      "is_outcome": false,
+      "in_degree": 226,
+      "out_degree": 0,
+      "display_layer": 3,
+      "band_size": 4
+    },
+    {
+      "id": "ygsmhni999",
+      "label": "WID: Factor Income Government Household Net (All)",
+      "causal_layer": 2,
+      "domain": "Governance",
+      "score": 0.36617405582922824,
+      "is_outcome": false,
+      "in_degree": 4,
+      "out_degree": 219,
+      "display_layer": 1,
+      "band_size": 5
+    },
+    {
+      "id": "SE.PRM.ENRL",
+      "label": "Primary education, pupils",
+      "causal_layer": 18,
+      "domain": "Education",
+      "score": 0.32348111658456485,
+      "is_outcome": false,
+      "in_degree": 197,
+      "out_degree": 0,
+      "display_layer": 3,
+      "band_size": 4
+    },
+    {
+      "id": "ycomhni999",
+      "label": "Compensation Income (Individual)",
+      "causal_layer": 2,
+      "domain": "Economic",
+      "score": 0.27257799671592775,
+      "is_outcome": false,
+      "in_degree": 1,
+      "out_degree": 165,
+      "display_layer": 1,
+      "band_size": 5
+    },
+    {
+      "id": "wdi_gerpf",
+      "label": "World Development Indicator: Gerpf",
+      "causal_layer": 16,
+      "domain": "Economic",
+      "score": 0.25779967159277506,
+      "is_outcome": false,
+      "in_degree": 157,
+      "out_degree": 0,
+      "display_layer": 3,
+      "band_size": 4
+    },
+    {
+      "id": "SG.LAW.INDX",
+      "label": "Women Business and the Law Index Score (scale 1-100)",
+      "causal_layer": 18,
+      "domain": "Demographics",
+      "score": 0.2545155993431856,
+      "is_outcome": false,
+      "in_degree": 155,
+      "out_degree": 0,
+      "display_layer": 3,
+      "band_size": 4
+    },
+    {
+      "id": "ynmxhoi999",
+      "label": "Mixed Income (Individual)",
+      "causal_layer": 4,
+      "domain": "Economic",
+      "score": 0.24302134646962234,
+      "is_outcome": false,
+      "in_degree": 8,
+      "out_degree": 140,
+      "display_layer": 1,
+      "band_size": 5
+    },
+    {
+      "id": "wcomhni999",
+      "label": "Wealth Composition - Housing (National)",
+      "causal_layer": 2,
+      "domain": "Mixed",
+      "score": 0.2413793103448276,
+      "is_outcome": false,
+      "in_degree": 2,
+      "out_degree": 145,
+      "display_layer": 1,
+      "band_size": 5
+    },
+    {
+      "id": "yprinfi999",
+      "label": "Pre-Tax Income (Individual)",
+      "causal_layer": 3,
+      "domain": "Economic",
+      "score": 0.2413793103448276,
+      "is_outcome": false,
+      "in_degree": 4,
+      "out_degree": 143,
+      "display_layer": 1,
+      "band_size": 5
+    },
+    {
+      "id": "REPR.1.G2.M.CP",
+      "label": "Repetition Rate - Primary, Male (%)",
+      "causal_layer": 19,
+      "domain": "Education",
+      "score": 0.23973727422003285,
+      "is_outcome": true,
+      "in_degree": 146,
+      "out_degree": 0,
+      "display_layer": 4,
+      "band_size": 2
+    },
+    {
+      "id": "NERT.2.GPIA",
+      "label": "Net Enrollment Rate Tertiary - Lower Secondary, Gender Parity Index",
+      "causal_layer": 5,
+      "domain": "Mixed",
+      "score": 0.23809523809523808,
+      "is_outcome": false,
+      "in_degree": 3,
+      "out_degree": 142,
+      "display_layer": 1,
+      "band_size": 5
+    },
+    {
+      "id": "hc",
+      "label": "Human Capital Index",
+      "causal_layer": 4,
+      "domain": "Education",
+      "score": 0.23809523809523808,
+      "is_outcome": false,
+      "in_degree": 8,
+      "out_degree": 137,
+      "display_layer": 1,
+      "band_size": 5
+    },
+    {
+      "id": "ygmxhni999",
+      "label": "Gross Mixed Income (Individual)",
+      "causal_layer": 2,
+      "domain": "Economic",
+      "score": 0.23645320197044334,
+      "is_outcome": false,
+      "in_degree": 2,
+      "out_degree": 142,
+      "display_layer": 1,
+      "band_size": 5
+    },
+    {
+      "id": "pwt_hci",
+      "label": "PWT: Human Capital Index",
+      "causal_layer": 6,
+      "domain": "Mixed",
+      "score": 0.22988505747126436,
+      "is_outcome": false,
+      "in_degree": 10,
+      "out_degree": 130,
+      "display_layer": 2,
+      "band_size": 9
+    },
+    {
+      "id": "v2xel_locelec",
+      "label": "Index: El Locelec",
+      "causal_layer": 7,
+      "domain": "Governance",
+      "score": 0.22660098522167488,
+      "is_outcome": false,
+      "in_degree": 2,
+      "out_degree": 136,
+      "display_layer": 2,
+      "band_size": 9
+    },
+    {
+      "id": "v2exctlhs_4",
+      "label": "Executive: Ctlhs (4)",
+      "causal_layer": 3,
+      "domain": "Governance",
+      "score": 0.2233169129720854,
+      "is_outcome": false,
+      "in_degree": 1,
+      "out_degree": 135,
+      "display_layer": 1,
+      "band_size": 5
+    },
+    {
+      "id": "ynsmhoi999",
+      "label": "Net Self-Employment Income (Individual)",
+      "causal_layer": 5,
+      "domain": "Economic",
+      "score": 0.2200328407224959,
+      "is_outcome": false,
+      "in_degree": 3,
+      "out_degree": 131,
+      "display_layer": 1,
+      "band_size": 5
+    },
+    {
+      "id": "v2xnp_pres",
+      "label": "Index: Np Pres",
+      "causal_layer": 2,
+      "domain": "Governance",
+      "score": 0.21674876847290642,
+      "is_outcome": false,
+      "in_degree": 1,
+      "out_degree": 131,
+      "display_layer": 1,
+      "band_size": 5
+    },
+    {
+      "id": "MENF.5T8.M",
+      "label": "Mean Years of Education - ISCED 5-8 (Tertiary Male)",
+      "causal_layer": 2,
+      "domain": "Mixed",
+      "score": 0.21510673234811165,
+      "is_outcome": false,
+      "in_degree": 1,
+      "out_degree": 130,
+      "display_layer": 1,
+      "band_size": 5
+    },
+    {
+      "id": "e_cow_imports",
+      "label": "Correlates of War:  Imports",
+      "causal_layer": 4,
+      "domain": "Mixed",
+      "score": 0.20853858784893267,
+      "is_outcome": false,
+      "in_degree": 2,
+      "out_degree": 125,
+      "display_layer": 1,
+      "band_size": 5
+    },
+    {
+      "id": "40034",
+      "label": "ICP Category 40034",
+      "causal_layer": 18,
+      "domain": "Economic",
+      "score": 0.19540229885057472,
+      "is_outcome": false,
+      "in_degree": 118,
+      "out_degree": 1,
+      "display_layer": 3,
+      "band_size": 4
+    },
+    {
+      "id": "v2elpeace_ord",
+      "label": "Elections: Peace (Ordinal)",
+      "causal_layer": 3,
+      "domain": "Governance",
+      "score": 0.1921182266009852,
+      "is_outcome": false,
+      "in_degree": 3,
+      "out_degree": 114,
+      "display_layer": 1,
+      "band_size": 5
+    },
+    {
+      "id": "wgwfini999",
+      "label": "Wealth: Government (Individual)",
+      "causal_layer": 3,
+      "domain": "Governance",
+      "score": 0.18883415435139572,
+      "is_outcome": false,
+      "in_degree": 4,
+      "out_degree": 111,
+      "display_layer": 1,
+      "band_size": 5
+    },
+    {
+      "id": "e_v2xel_locelec_3C",
+      "label": "V-Dem Index: El Locelec 3C",
+      "causal_layer": 9,
+      "domain": "Governance",
+      "score": 0.18719211822660098,
+      "is_outcome": false,
+      "in_degree": 3,
+      "out_degree": 111,
+      "display_layer": 2,
+      "band_size": 9
+    },
+    {
+      "id": "e_v2xel_locelec_4C",
+      "label": "V-Dem Index: El Locelec 4C",
+      "causal_layer": 9,
+      "domain": "Governance",
+      "score": 0.1839080459770115,
+      "is_outcome": false,
+      "in_degree": 2,
+      "out_degree": 110,
+      "display_layer": 2,
+      "band_size": 9
+    },
+    {
+      "id": "atop_consult",
+      "label": "Alliance Treaty: Consult",
+      "causal_layer": 5,
+      "domain": "Mixed",
+      "score": 0.1839080459770115,
+      "is_outcome": false,
+      "in_degree": 2,
+      "out_degree": 110,
+      "display_layer": 1,
+      "band_size": 5
+    },
+    {
+      "id": "e_v2x_jucon_5C",
+      "label": "V-Dem Index:  Jucon 5C",
+      "causal_layer": 12,
+      "domain": "Governance",
+      "score": 0.180623973727422,
+      "is_outcome": false,
+      "in_degree": 6,
+      "out_degree": 104,
+      "display_layer": 2,
+      "band_size": 9
+    },
+    {
+      "id": "v2smorgtypes_7",
+      "label": "Social Media: Orgtypes (7)",
+      "causal_layer": 13,
+      "domain": "Governance",
+      "score": 0.180623973727422,
+      "is_outcome": false,
+      "in_degree": 1,
+      "out_degree": 109,
+      "display_layer": 2,
+      "band_size": 9
+    },
+    {
+      "id": "EA.S1T8.AG25T99.M.LPIA",
+      "label": "Educational Attainment - Primary - Age 25+, Male",
+      "causal_layer": 9,
+      "domain": "Education",
+      "score": 0.180623973727422,
+      "is_outcome": false,
+      "in_degree": 6,
+      "out_degree": 104,
+      "display_layer": 2,
+      "band_size": 9
+    },
+    {
+      "id": "GER.1T2.GPIA",
+      "label": "Gross Enrollment Rate - Primary, Gender Parity Index",
+      "causal_layer": 2,
+      "domain": "Mixed",
+      "score": 0.17898193760262726,
+      "is_outcome": false,
+      "in_degree": 2,
+      "out_degree": 107,
+      "display_layer": 1,
+      "band_size": 5
+    },
+    {
+      "id": "v2regoppgroupsact_7",
+      "label": "Regime: Oppgroupsact (7)",
+      "causal_layer": 13,
+      "domain": "Governance",
+      "score": 0.17569786535303777,
+      "is_outcome": false,
+      "in_degree": 6,
+      "out_degree": 101,
+      "display_layer": 2,
+      "band_size": 9
+    },
+    {
+      "id": "v2edtequal_mean",
+      "label": "Education: Tequal (Mean)",
+      "causal_layer": 7,
+      "domain": "Governance",
+      "score": 0.17405582922824303,
+      "is_outcome": false,
+      "in_degree": 7,
+      "out_degree": 99,
+      "display_layer": 2,
+      "band_size": 9
+    },
+    {
+      "id": "v2medentrain_osp",
+      "label": "Media: Dentrain (Original Scale Point)",
+      "causal_layer": 4,
+      "domain": "Governance",
+      "score": 0.17077175697865354,
+      "is_outcome": false,
+      "in_degree": 2,
+      "out_degree": 102,
+      "display_layer": 1,
+      "band_size": 5
+    },
+    {
+      "id": "SLE.1T3.GPIA",
+      "label": "School Life Expectancy - Primary, Gender Parity Index",
+      "causal_layer": 3,
+      "domain": "Education",
+      "score": 0.16912972085385877,
+      "is_outcome": false,
+      "in_degree": 1,
+      "out_degree": 102,
+      "display_layer": 1,
+      "band_size": 5
+    },
+    {
+      "id": "v2catrauni_osp",
+      "label": "Civil Society: Trauni (Original Scale Point)",
+      "causal_layer": 13,
+      "domain": "Governance",
+      "score": 0.16748768472906403,
+      "is_outcome": false,
+      "in_degree": 5,
+      "out_degree": 97,
+      "display_layer": 2,
+      "band_size": 9
+    },
+    {
+      "id": "wtbxrxi999",
+      "label": "Total Wealth (Individual)",
+      "causal_layer": 2,
+      "domain": "Economic",
+      "score": 0.16420361247947454,
+      "is_outcome": false,
+      "in_degree": 4,
+      "out_degree": 96,
+      "display_layer": 1,
+      "band_size": 5
+    },
+    {
+      "id": "SH.DTH.MORT.FE",
+      "label": "Number of under-five deaths, female",
+      "causal_layer": 18,
+      "domain": "Health",
+      "score": 0.1625615763546798,
+      "is_outcome": false,
+      "in_degree": 99,
+      "out_degree": 0,
+      "display_layer": 3,
+      "band_size": 4
+    },
+    {
+      "id": "40035",
+      "label": "ICP Category 40035",
+      "causal_layer": 16,
+      "domain": "Economic",
+      "score": 0.16091954022988506,
+      "is_outcome": false,
+      "in_degree": 98,
+      "out_degree": 0,
+      "display_layer": 3,
+      "band_size": 4
+    },
+    {
+      "id": "v3peminwage",
+      "label": "Political Economy: Minwage",
+      "causal_layer": 11,
+      "domain": "Governance",
+      "score": 0.1592775041050903,
+      "is_outcome": false,
+      "in_degree": 4,
+      "out_degree": 93,
+      "display_layer": 2,
+      "band_size": 9
+    },
+    {
+      "id": "v2xedvd_inpt",
+      "label": "Index: Edvd Inpt",
+      "causal_layer": 0,
+      "domain": "Governance",
+      "score": 0.1592775041050903,
+      "is_outcome": false,
+      "in_degree": 0,
+      "out_degree": 97,
+      "display_layer": 0,
+      "band_size": 1
+    },
+    {
+      "id": "v2smforads",
+      "label": "Social Media: Forads",
+      "causal_layer": 5,
+      "domain": "Governance",
+      "score": 0.15763546798029557,
+      "is_outcome": false,
+      "in_degree": 1,
+      "out_degree": 95,
+      "display_layer": 1,
+      "band_size": 5
+    },
+    {
+      "id": "ynsrnfi999",
+      "label": "Net Surplus (Individual)",
+      "causal_layer": 8,
+      "domain": "Economic",
+      "score": 0.15763546798029557,
+      "is_outcome": false,
+      "in_degree": 2,
+      "out_degree": 94,
+      "display_layer": 2,
+      "band_size": 9
+    },
+    {
+      "id": "LR.GALP.AG15T24.GPIA",
+      "label": "Literacy Rate - Primary - Age 15-24, Gender Parity Index",
+      "causal_layer": 13,
+      "domain": "Education",
+      "score": 0.15763546798029557,
+      "is_outcome": false,
+      "in_degree": 1,
+      "out_degree": 95,
+      "display_layer": 2,
+      "band_size": 9
+    },
+    {
+      "id": "v2smonex_ord",
+      "label": "Social Media: Onex (Ordinal)",
+      "causal_layer": 9,
+      "domain": "Governance",
+      "score": 0.15763546798029557,
+      "is_outcome": false,
+      "in_degree": 1,
+      "out_degree": 95,
+      "display_layer": 2,
+      "band_size": 9
+    },
+    {
+      "id": "v2ex_hogw",
+      "label": "Executive: Hogw",
+      "causal_layer": 5,
+      "domain": "Governance",
+      "score": 0.15435139573070608,
+      "is_outcome": false,
+      "in_degree": 1,
+      "out_degree": 93,
+      "display_layer": 1,
+      "band_size": 5
+    },
+    {
+      "id": "v2ex_hosw",
+      "label": "Executive: Hosw",
+      "causal_layer": 5,
+      "domain": "Governance",
+      "score": 0.15435139573070608,
+      "is_outcome": false,
+      "in_degree": 1,
+      "out_degree": 93,
+      "display_layer": 1,
+      "band_size": 5
+    },
+    {
+      "id": "v2smhargr_3",
+      "label": "Social Media: Hargr (3)",
+      "causal_layer": 9,
+      "domain": "Governance",
+      "score": 0.1510673234811166,
+      "is_outcome": false,
+      "in_degree": 2,
+      "out_degree": 90,
+      "display_layer": 2,
+      "band_size": 9
+    },
+    {
+      "id": "e_gdp",
+      "label": "GDP",
+      "causal_layer": 16,
+      "domain": "Economic",
+      "score": 0.1510673234811166,
+      "is_outcome": false,
+      "in_degree": 89,
+      "out_degree": 3,
+      "display_layer": 3,
+      "band_size": 4
+    },
+    {
+      "id": "v2edcentcurrlm_mean",
+      "label": "Education: Centcurrlm (Mean)",
+      "causal_layer": 7,
+      "domain": "Governance",
+      "score": 0.1510673234811166,
+      "is_outcome": false,
+      "in_degree": 2,
+      "out_degree": 90,
+      "display_layer": 2,
+      "band_size": 9
+    },
+    {
+      "id": "v2regsupgroups_5",
+      "label": "Regime: Supgroups (5)",
+      "causal_layer": 12,
+      "domain": "Governance",
+      "score": 0.1477832512315271,
+      "is_outcome": false,
+      "in_degree": 9,
+      "out_degree": 81,
+      "display_layer": 2,
+      "band_size": 9
+    },
+    {
+      "id": "v2peasbecon_nr",
+      "label": "Political Equality: Asbecon (Non-Response)",
+      "causal_layer": 17,
+      "domain": "Governance",
+      "score": 0.1477832512315271,
+      "is_outcome": false,
+      "in_degree": 89,
+      "out_degree": 1,
+      "display_layer": 3,
+      "band_size": 4
+    },
+    {
+      "id": "25056",
+      "label": "ICP Category 25056",
+      "causal_layer": 10,
+      "domain": "Economic",
+      "score": 0.1477832512315271,
+      "is_outcome": false,
+      "in_degree": 4,
+      "out_degree": 86,
+      "display_layer": 2,
+      "band_size": 9
+    },
+    {
+      "id": "ytbxrxi999",
+      "label": "Trade Balance to Income (Exchange Rate Index)",
+      "causal_layer": 2,
+      "domain": "Economic",
+      "score": 0.1412151067323481,
+      "is_outcome": false,
+      "in_degree": 4,
+      "out_degree": 82,
+      "display_layer": 1,
+      "band_size": 5
+    },
+    {
+      "id": "opri_tilsef",
+      "label": "Political Regime: Tilsef",
+      "causal_layer": 3,
+      "domain": "Mixed",
+      "score": 0.13957307060755336,
+      "is_outcome": false,
+      "in_degree": 2,
+      "out_degree": 83,
+      "display_layer": 1,
+      "band_size": 5
+    },
+    {
+      "id": "CR.2.RUR.WPIA",
+      "label": "Completion Rate - Lower Secondary - Rural, Wealth Parity Index",
+      "causal_layer": 7,
+      "domain": "Education",
+      "score": 0.13793103448275862,
+      "is_outcome": false,
+      "in_degree": 2,
+      "out_degree": 82,
+      "display_layer": 2,
+      "band_size": 9
+    },
+    {
+      "id": "v2ellocpwr_osp",
+      "label": "Elections: Locpwr (Original Scale Point)",
+      "causal_layer": 7,
+      "domain": "Governance",
+      "score": 0.13628899835796388,
+      "is_outcome": false,
+      "in_degree": 3,
+      "out_degree": 80,
+      "display_layer": 2,
+      "band_size": 9
+    },
+    {
+      "id": "EA.5T8.AG25T99.GPIA",
+      "label": "Educational Attainment - Lower Secondary - Age 25+, Gender Parity Index",
+      "causal_layer": 9,
+      "domain": "Education",
+      "score": 0.13136288998357964,
+      "is_outcome": false,
+      "in_degree": 5,
+      "out_degree": 75,
+      "display_layer": 2,
+      "band_size": 9
+    },
+    {
+      "id": "OFST.1T3.F.CP",
+      "label": "Out-of-School - Primary, Female (%)",
+      "causal_layer": 3,
+      "domain": "Education",
+      "score": 0.12807881773399016,
+      "is_outcome": false,
+      "in_degree": 7,
+      "out_degree": 71,
+      "display_layer": 1,
+      "band_size": 5
+    },
+    {
+      "id": "PRYA.12MO.AG15T64.GPIA",
+      "label": "Participation Rate Young Adults - Primary, Gender Parity Index",
+      "causal_layer": 7,
+      "domain": "Education",
+      "score": 0.12479474548440066,
+      "is_outcome": false,
+      "in_degree": 4,
+      "out_degree": 72,
+      "display_layer": 2,
+      "band_size": 9
+    },
+    {
+      "id": "v2medentrain_mean",
+      "label": "Media: Dentrain (Mean)",
+      "causal_layer": 4,
+      "domain": "Governance",
+      "score": 0.12479474548440066,
+      "is_outcome": false,
+      "in_degree": 1,
+      "out_degree": 75,
+      "display_layer": 1,
+      "band_size": 5
+    },
+    {
+      "id": "EXPGDP.TOT",
+      "label": "Education Expenditure (% GDP Total)",
+      "causal_layer": 5,
+      "domain": "Education",
+      "score": 0.12315270935960591,
+      "is_outcome": false,
+      "in_degree": 8,
+      "out_degree": 67,
+      "display_layer": 1,
+      "band_size": 5
+    },
+    {
+      "id": "v2smhargr_6",
+      "label": "Social Media: Hargr (6)",
+      "causal_layer": 13,
+      "domain": "Governance",
+      "score": 0.12151067323481117,
+      "is_outcome": false,
+      "in_degree": 7,
+      "out_degree": 67,
+      "display_layer": 2,
+      "band_size": 9
+    },
+    {
+      "id": "SLE.1T8.GPIA",
+      "label": "School Life Expectancy - Primary, Gender Parity Index",
+      "causal_layer": 3,
+      "domain": "Education",
+      "score": 0.11986863711001643,
+      "is_outcome": false,
+      "in_degree": 1,
+      "out_degree": 72,
+      "display_layer": 1,
+      "band_size": 5
+    },
+    {
+      "id": "43617",
+      "label": "ICP Category 43617",
+      "causal_layer": 2,
+      "domain": "Economic",
+      "score": 0.11986863711001643,
+      "is_outcome": false,
+      "in_degree": 2,
+      "out_degree": 71,
+      "display_layer": 1,
+      "band_size": 5
+    },
+    {
+      "id": "EV1524P.2T5.V.GPIA",
+      "label": "UNESCO: Education Vocational 15-24 - 2T5 V Gender Parity",
+      "causal_layer": 3,
+      "domain": "Education",
+      "score": 0.11822660098522167,
+      "is_outcome": false,
+      "in_degree": 2,
+      "out_degree": 70,
+      "display_layer": 1,
+      "band_size": 5
+    },
+    {
+      "id": "v2edtefire_osp",
+      "label": "Education: Tefire (Original Scale Point)",
+      "causal_layer": 13,
+      "domain": "Governance",
+      "score": 0.11822660098522167,
+      "is_outcome": false,
+      "in_degree": 5,
+      "out_degree": 67,
+      "display_layer": 2,
+      "band_size": 9
+    },
+    {
+      "id": "v2edteautonomy_ord",
+      "label": "Education: Teautonomy (Ordinal)",
+      "causal_layer": 4,
+      "domain": "Governance",
+      "score": 0.11658456486042693,
+      "is_outcome": false,
+      "in_degree": 5,
+      "out_degree": 66,
+      "display_layer": 1,
+      "band_size": 5
+    },
+    {
+      "id": "wdi_migration",
+      "label": "World Development Indicator: Migration",
+      "causal_layer": 1,
+      "domain": "Economic",
+      "score": 0.11658456486042693,
+      "is_outcome": false,
+      "in_degree": 1,
+      "out_degree": 70,
+      "display_layer": 1,
+      "band_size": 5
+    },
+    {
+      "id": "v2smpolhate_mean",
+      "label": "Social Media: Polhate (Mean)",
+      "causal_layer": 11,
+      "domain": "Governance",
+      "score": 0.11494252873563218,
+      "is_outcome": false,
+      "in_degree": 4,
+      "out_degree": 66,
+      "display_layer": 2,
+      "band_size": 9
+    },
+    {
+      "id": "25003",
+      "label": "ICP Category 25003",
+      "causal_layer": 2,
+      "domain": "Economic",
+      "score": 0.11330049261083744,
+      "is_outcome": false,
+      "in_degree": 3,
+      "out_degree": 66,
+      "display_layer": 1,
+      "band_size": 5
+    },
+    {
+      "id": "v2exrmhgnp_8",
+      "label": "Executive: Rmhgnp (8)",
+      "causal_layer": 3,
+      "domain": "Governance",
+      "score": 0.11330049261083744,
+      "is_outcome": false,
+      "in_degree": 1,
+      "out_degree": 68,
+      "display_layer": 1,
+      "band_size": 5
+    },
+    {
+      "id": "v2xed_ed_inco",
+      "label": "Index: Ed Ed Inco",
+      "causal_layer": 13,
+      "domain": "Governance",
+      "score": 0.11330049261083744,
+      "is_outcome": false,
+      "in_degree": 4,
+      "out_degree": 65,
+      "display_layer": 2,
+      "band_size": 9
+    },
+    {
+      "id": "v2ellocpwr_ord",
+      "label": "Elections: Locpwr (Ordinal)",
+      "causal_layer": 8,
+      "domain": "Governance",
+      "score": 0.1116584564860427,
+      "is_outcome": false,
+      "in_degree": 3,
+      "out_degree": 65,
+      "display_layer": 2,
+      "band_size": 9
+    },
+    {
+      "id": "opri_tipsntt",
+      "label": "Political Regime: Tipsntt",
+      "causal_layer": 11,
+      "domain": "Mixed",
+      "score": 0.10837438423645321,
+      "is_outcome": false,
+      "in_degree": 4,
+      "out_degree": 62,
+      "display_layer": 2,
+      "band_size": 9
+    },
+    {
+      "id": "v2clgencl_ord",
+      "label": "Civil Liberties: Gencl (Ordinal)",
+      "causal_layer": 5,
+      "domain": "Governance",
+      "score": 0.10837438423645321,
+      "is_outcome": false,
+      "in_degree": 4,
+      "out_degree": 62,
+      "display_layer": 1,
+      "band_size": 5
+    },
+    {
+      "id": "EN.GHG.N2O.WA.MT.CE.AR5",
+      "label": "Nitrous oxide (N2O) emissions from Waste (Mt CO2e)",
+      "causal_layer": 18,
+      "domain": "Environment",
+      "score": 0.10673234811165845,
+      "is_outcome": false,
+      "in_degree": 65,
+      "out_degree": 0,
+      "display_layer": 3,
+      "band_size": 4
+    },
+    {
+      "id": "yfkpini999",
+      "label": "Capital Income (Individual)",
+      "causal_layer": 3,
+      "domain": "Economic",
+      "score": 0.10673234811165845,
+      "is_outcome": false,
+      "in_degree": 6,
+      "out_degree": 59,
+      "display_layer": 1,
+      "band_size": 5
+    },
+    {
+      "id": "ciri_relfre",
+      "label": "CIRI Human Rights: Relfre",
+      "causal_layer": 3,
+      "domain": "Governance",
+      "score": 0.10509031198686371,
+      "is_outcome": false,
+      "in_degree": 1,
+      "out_degree": 63,
+      "display_layer": 1,
+      "band_size": 5
+    },
+    {
+      "id": "NY.GDP.NGAS.RT.ZS",
+      "label": "Natural gas rents (% of GDP)",
+      "causal_layer": 16,
+      "domain": "Economic",
+      "score": 0.10344827586206896,
+      "is_outcome": false,
+      "in_degree": 63,
+      "out_degree": 0,
+      "display_layer": 3,
+      "band_size": 4
+    },
+    {
+      "id": "v2dlencmps",
+      "label": "Deliberation: Encmps",
+      "causal_layer": 10,
+      "domain": "Governance",
+      "score": 0.10180623973727422,
+      "is_outcome": false,
+      "in_degree": 3,
+      "out_degree": 59,
+      "display_layer": 2,
+      "band_size": 9
+    },
+    {
+      "id": "v2xed_ed_poed",
+      "label": "Index: Ed Ed Poed",
+      "causal_layer": 10,
+      "domain": "Governance",
+      "score": 0.10180623973727422,
+      "is_outcome": false,
+      "in_degree": 3,
+      "out_degree": 59,
+      "display_layer": 2,
+      "band_size": 9
+    },
+    {
+      "id": "SAP.4.F",
+      "label": "Standardized Achievement Percentile - Post-Secondary, Female",
+      "causal_layer": 15,
+      "domain": "Education",
+      "score": 0.10180623973727422,
+      "is_outcome": false,
+      "in_degree": 62,
+      "out_degree": 0,
+      "display_layer": 3,
+      "band_size": 4
+    },
+    {
+      "id": "npopulf851",
+      "label": "Population",
+      "causal_layer": 2,
+      "domain": "Governance",
+      "score": 0.10180623973727422,
+      "is_outcome": false,
+      "in_degree": 1,
+      "out_degree": 61,
+      "display_layer": 1,
+      "band_size": 5
+    },
+    {
+      "id": "v2exremhog_ord",
+      "label": "Executive: Remhog (Ordinal)",
+      "causal_layer": 8,
+      "domain": "Governance",
+      "score": 0.10016420361247948,
+      "is_outcome": false,
+      "in_degree": 4,
+      "out_degree": 57,
+      "display_layer": 2,
+      "band_size": 9
+    },
+    {
+      "id": "wfkpini999",
+      "label": "Fixed Capital Wealth (Individual)",
+      "causal_layer": 3,
+      "domain": "Economic",
+      "score": 0.10016420361247948,
+      "is_outcome": false,
+      "in_degree": 5,
+      "out_degree": 56,
+      "display_layer": 1,
+      "band_size": 5
+    },
+    {
+      "id": "v2edpoledsec_osp",
+      "label": "Education: Poledsec (Original Scale Point)",
+      "causal_layer": 10,
+      "domain": "Governance",
+      "score": 0.09852216748768473,
+      "is_outcome": false,
+      "in_degree": 4,
+      "out_degree": 56,
+      "display_layer": 2,
+      "band_size": 9
+    },
+    {
+      "id": "EA.1T8.AG25T99.WPIA",
+      "label": "Educational Attainment - Primary - Age 25+, Wealth Parity Index",
+      "causal_layer": 7,
+      "domain": "Education",
+      "score": 0.09688013136288999,
+      "is_outcome": false,
+      "in_degree": 6,
+      "out_degree": 53,
+      "display_layer": 2,
+      "band_size": 9
+    },
+    {
+      "id": "v2smprivcon_mean",
+      "label": "Social Media: Privcon (Mean)",
+      "causal_layer": 15,
+      "domain": "Governance",
+      "score": 0.09523809523809523,
+      "is_outcome": false,
+      "in_degree": 3,
+      "out_degree": 55,
+      "display_layer": 3,
+      "band_size": 4
+    },
+    {
+      "id": "v2smonper_mean",
+      "label": "Social Media: Onper (Mean)",
+      "causal_layer": 10,
+      "domain": "Governance",
+      "score": 0.09523809523809523,
+      "is_outcome": false,
+      "in_degree": 2,
+      "out_degree": 56,
+      "display_layer": 2,
+      "band_size": 9
+    },
+    {
+      "id": "accmhoi992",
+      "label": "Accumulated (Household)",
+      "causal_layer": 2,
+      "domain": "Economic",
+      "score": 0.09359605911330049,
+      "is_outcome": false,
+      "in_degree": 3,
+      "out_degree": 54,
+      "display_layer": 1,
+      "band_size": 5
+    },
+    {
+      "id": "v2pepwrses",
+      "label": "Political Equality: Pwrses",
+      "causal_layer": 6,
+      "domain": "Governance",
+      "score": 0.09195402298850575,
+      "is_outcome": false,
+      "in_degree": 2,
+      "out_degree": 54,
+      "display_layer": 2,
+      "band_size": 9
+    },
+    {
+      "id": "NW.PCA.TO",
+      "label": "Produced capital (real chained 2019 US$)",
+      "causal_layer": 17,
+      "domain": "Environment",
+      "score": 0.090311986863711,
+      "is_outcome": false,
+      "in_degree": 55,
+      "out_degree": 0,
+      "display_layer": 3,
+      "band_size": 4
+    },
+    {
+      "id": "EA.3T8.AG25T99.URB.GPIA",
+      "label": "Educational Attainment - Lower Secondary - Age 25+ - Urban, Gender Parity Index",
+      "causal_layer": 7,
+      "domain": "Education",
+      "score": 0.090311986863711,
+      "is_outcome": false,
+      "in_degree": 6,
+      "out_degree": 49,
+      "display_layer": 2,
+      "band_size": 9
+    },
+    {
+      "id": "ysavini999",
+      "label": "Savings (Individual)",
+      "causal_layer": 2,
+      "domain": "Economic",
+      "score": 0.090311986863711,
+      "is_outcome": false,
+      "in_degree": 3,
+      "out_degree": 52,
+      "display_layer": 1,
+      "band_size": 5
+    }
+  ],
+  "edges": [
+    {
+      "source": "v2ex_hogw",
+      "target": "pwt_hci",
+      "weight": 0.13342327776837637,
+      "lag": 0
+    },
+    {
+      "source": "v2ex_hosw",
+      "target": "pwt_hci",
+      "weight": 0.13342327776837626,
+      "lag": 0
+    },
+    {
+      "source": "v2ex_hosw",
+      "target": "v2xed_ed_inco",
+      "weight": 0.16896764179324078,
+      "lag": 0
+    },
+    {
+      "source": "e_v2xel_locelec_4C",
+      "target": "v2smhargr_6",
+      "weight": 0.2488747248589773,
+      "lag": 0
+    },
+    {
+      "source": "v2dlencmps",
+      "target": "v3peminwage",
+      "weight": 0.3873930926813805,
+      "lag": 0
+    },
+    {
+      "source": "e_v2xel_locelec_3C",
+      "target": "v2smhargr_6",
+      "weight": 0.18978205347255483,
+      "lag": 0
+    },
+    {
+      "source": "v3peminwage",
+      "target": "v2regoppgroupsact_7",
+      "weight": 0.17502459522323566,
+      "lag": 0
+    },
+    {
+      "source": "v3peminwage",
+      "target": "v2regsupgroups_5",
+      "weight": 0.15232059983857849,
+      "lag": 0
+    },
+    {
+      "source": "v2smpolhate_mean",
+      "target": "e_v2x_jucon_5C",
+      "weight": 0.2717498030127345,
+      "lag": 0
+    },
+    {
+      "source": "v2smforads",
+      "target": "v2pepwrses",
+      "weight": 0.22143169274949803,
+      "lag": 0
+    },
+    {
+      "source": "EA.3T8.AG25T99.URB.GPIA",
+      "target": "EA.5T8.AG25T99.GPIA",
+      "weight": 0.40589264604499986,
+      "lag": 0
+    },
+    {
+      "source": "v2ellocpwr_osp",
+      "target": "e_v2xel_locelec_3C",
+      "weight": 0.4259618336851489,
+      "lag": 0
+    },
+    {
+      "source": "v2ellocpwr_ord",
+      "target": "EA.S1T8.AG25T99.M.LPIA",
+      "weight": 0.1701611770981194,
+      "lag": 0
+    },
+    {
+      "source": "v2ellocpwr_ord",
+      "target": "v2smhargr_3",
+      "weight": 0.962619408162553,
+      "lag": 0
+    },
+    {
+      "source": "v2ellocpwr_ord",
+      "target": "e_v2xel_locelec_3C",
+      "weight": 0.31512840258933167,
+      "lag": 0
+    },
+    {
+      "source": "v2ellocpwr_ord",
+      "target": "e_v2xel_locelec_4C",
+      "weight": 0.3255820024371835,
+      "lag": 0
+    },
+    {
+      "source": "v2ellocpwr_ord",
+      "target": "v2smonex_ord",
+      "weight": 0.1716414020804666,
+      "lag": 0
+    },
+    {
+      "source": "v2regsupgroups_5",
+      "target": "v2edtefire_osp",
+      "weight": 0.12099784120493806,
+      "lag": 0
+    },
+    {
+      "source": "wfkpini999",
+      "target": "ynmxhoi999",
+      "weight": 0.1952832425085875,
+      "lag": 0
+    },
+    {
+      "source": "ycomhni999",
+      "target": "OFST.1T3.F.CP",
+      "weight": 0.15299802339380042,
+      "lag": 0
+    },
+    {
+      "source": "v2edtequal_mean",
+      "target": "opri_tipsntt",
+      "weight": 0.16560161692237002,
+      "lag": 0
+    },
+    {
+      "source": "e_gdp",
+      "target": "NW.PCA.TO",
+      "weight": 0.8470308218031353,
+      "lag": 0
+    },
+    {
+      "source": "v2xed_ed_poed",
+      "target": "wdi_gerpf",
+      "weight": 0.3700408427659186,
+      "lag": 0
+    },
+    {
+      "source": "25056",
+      "target": "opri_tipsntt",
+      "weight": 0.718232927188319,
+      "lag": 0
+    },
+    {
+      "source": "wgwfini999",
+      "target": "hc",
+      "weight": 0.19660978060018933,
+      "lag": 0
+    },
+    {
+      "source": "pwt_hci",
+      "target": "v2edcentcurrlm_mean",
+      "weight": 0.7132759622369369,
+      "lag": 0
+    },
+    {
+      "source": "hc",
+      "target": "v2edcentcurrlm_mean",
+      "weight": 1.2262527729139336,
+      "lag": 0
+    },
+    {
+      "source": "v2smonex_ord",
+      "target": "v2dlencmps",
+      "weight": 0.26972340308633713,
+      "lag": 0
+    },
+    {
+      "source": "GER.1T2.GPIA",
+      "target": "REPR.1.G2.M.CP",
+      "weight": 0.12894424149527636,
+      "lag": 0
+    },
+    {
+      "source": "GER.1T2.GPIA",
+      "target": "REPR.1.G3.F.CP",
+      "weight": 0.13164937165099247,
+      "lag": 0
+    },
+    {
+      "source": "MENF.5T8.M",
+      "target": "v2ellocpwr_osp",
+      "weight": 0.18631311090151384,
+      "lag": 0
+    },
+    {
+      "source": "e_cow_imports",
+      "target": "atop_consult",
+      "weight": 0.133114839040715,
+      "lag": 0
+    },
+    {
+      "source": "yfkpini999",
+      "target": "ynmxhoi999",
+      "weight": 0.3421736046157123,
+      "lag": 0
+    },
+    {
+      "source": "v2edteautonomy_ord",
+      "target": "25056",
+      "weight": 0.14080881810496967,
+      "lag": 0
+    },
+    {
+      "source": "wtbxrxi999",
+      "target": "v2elpeace_ord",
+      "weight": 0.19325300667948678,
+      "lag": 0
+    },
+    {
+      "source": "v2catrauni_osp",
+      "target": "40035",
+      "weight": 0.18476123008851178,
+      "lag": 0
+    },
+    {
+      "source": "v2xedvd_inpt",
+      "target": "v2regoppgroupsact_7",
+      "weight": 0.23955605441329272,
+      "lag": 0
+    },
+    {
+      "source": "v2xedvd_inpt",
+      "target": "NW.PCA.TO",
+      "weight": 0.2442297802462363,
+      "lag": 0
+    },
+    {
+      "source": "v2medentrain_osp",
+      "target": "wdi_gerpf",
+      "weight": 1.2482609446271602,
+      "lag": 0
+    },
+    {
+      "source": "v2medentrain_osp",
+      "target": "v2regoppgroupsact_7",
+      "weight": 0.6104926411641131,
+      "lag": 0
+    },
+    {
+      "source": "v2medentrain_osp",
+      "target": "v2edpoledsec_osp",
+      "weight": 0.7824131456567907,
+      "lag": 0
+    },
+    {
+      "source": "v2medentrain_mean",
+      "target": "REPR.1.G2.F.CP",
+      "weight": 0.208823475287185,
+      "lag": 0
+    },
+    {
+      "source": "v2medentrain_mean",
+      "target": "v3peminwage",
+      "weight": 0.17120116099646554,
+      "lag": 0
+    },
+    {
+      "source": "ysavini999",
+      "target": "wfkpini999",
+      "weight": 0.29277188542388893,
+      "lag": 0
+    },
+    {
+      "source": "ysavini999",
+      "target": "yfkpini999",
+      "weight": 0.23713746959771143,
+      "lag": 0
+    }
+  ]
+}
