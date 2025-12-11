@@ -95,7 +95,7 @@ const DOMAIN_COLORS: Record<string, string> = {
   'Research': '#009688'
 }
 
-const DATA_FILE = '/v2_1_graph.json'
+const DATA_FILE = '/v2_1_visualization_final.json'
 
 function App() {
   const svgRef = useRef<SVGSVGElement>(null)
