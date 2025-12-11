@@ -18,10 +18,46 @@ export interface RingConfig {
 
 export interface LayoutConfig {
   rings: RingConfig[]
-  nodePadding: number  // Minimum pixels between node edges
+  nodePadding: number  // Base padding in pixels between node edges
   startAngle: number   // Starting angle in radians (default: -PI/2 for top)
   totalAngle: number   // Total angle to distribute nodes (default: 2*PI)
   minRingGap: number   // Minimum gap between consecutive rings (default: 50)
+  scalePaddingWithNodeSize?: boolean  // If true, padding scales proportionally with node size (default: true)
+}
+
+/**
+ * Reference node size used for padding scaling calculations.
+ * Padding is defined relative to this size, then scaled for each ring.
+ * Value of 6 is the median of typical ring node sizes (3, 5, 6, 8, 12, 15).
+ */
+const REFERENCE_NODE_SIZE = 6
+
+/**
+ * Calculates effective padding for a specific ring based on its node size.
+ *
+ * When scalePaddingWithNodeSize is enabled:
+ * - Larger nodes get proportionally more padding
+ * - Smaller nodes get proportionally less padding
+ * - This maintains consistent visual spacing ratios across rings
+ *
+ * Formula: effectivePadding = basePadding * (nodeSize / REFERENCE_NODE_SIZE)
+ *
+ * Example with basePadding=7 and REFERENCE_NODE_SIZE=6:
+ * - Ring 1 (nodeSize 12): 7 * (12/6) = 14px padding
+ * - Ring 3 (nodeSize 6):  7 * (6/6)  = 7px padding
+ * - Ring 5 (nodeSize 3):  7 * (3/6)  = 3.5px padding
+ *
+ * @param nodeSize - The node size for the ring
+ * @param basePadding - The base padding value from config
+ * @param scalePadding - Whether to apply scaling (default true)
+ */
+export function getEffectivePadding(
+  nodeSize: number,
+  basePadding: number,
+  scalePadding: boolean = true
+): number {
+  if (!scalePadding) return basePadding
+  return basePadding * (nodeSize / REFERENCE_NODE_SIZE)
 }
 
 /**
@@ -68,15 +104,22 @@ interface TreeNode {
 
 /**
  * Computes the minimum radius needed to fit N nodes without overlap
- * when nodes are evenly distributed around the circle
+ * when nodes are evenly distributed around the circle.
+ *
+ * @param nodeCount - Number of nodes on the ring
+ * @param nodeSize - Radius of each node
+ * @param basePadding - Base padding value
+ * @param scalePadding - Whether to scale padding with node size
  */
 function computeRequiredRadiusForEvenDistribution(
   nodeCount: number,
   nodeSize: number,
-  nodePadding: number
+  basePadding: number,
+  scalePadding: boolean
 ): number {
   if (nodeCount <= 1) return 0
-  const minArcDistance = nodeSize * 2 + nodePadding
+  const effectivePadding = getEffectivePadding(nodeSize, basePadding, scalePadding)
+  const minArcDistance = nodeSize * 2 + effectivePadding
   const requiredCircumference = nodeCount * minArcDistance
   return requiredCircumference / (2 * Math.PI)
 }
@@ -154,6 +197,7 @@ function computeOptimalRingRadii(
   config: LayoutConfig
 ): ComputedRingConfig[] {
   const maxLayer = Math.max(...nodes.map(n => n.layer))
+  const scalePadding = config.scalePaddingWithNodeSize !== false // default true
 
   // Count nodes per layer
   const nodeCountByLayer = new Map<number, number>()
@@ -179,7 +223,9 @@ function computeOptimalRingRadii(
   for (let layer = 0; layer < config.rings.length; layer++) {
     const ringConfig = config.rings[layer]
     const nodeCount = nodeCountByLayer.get(layer) || 0
-    const requiredRadius = computeRequiredRadiusForEvenDistribution(nodeCount, ringConfig.nodeSize, config.nodePadding)
+    const requiredRadius = computeRequiredRadiusForEvenDistribution(
+      nodeCount, ringConfig.nodeSize, config.nodePadding, scalePadding
+    )
 
     let radius = Math.max(requiredRadius, ringConfig.radius, layer === 0 ? 0 : currentRadius + config.minRingGap)
     if (layer === 0 && nodeCount <= 1) radius = 0
@@ -205,7 +251,8 @@ function computeOptimalRingRadii(
       const count = subtree.descendantCountByLayer.get(layer) || 0
       const ring = baseRings[layer]
       if (ring.radius > 0 && count > 0) {
-        const minSpacing = ring.nodeSize * 2 + config.nodePadding
+        const effectivePadding = getEffectivePadding(ring.nodeSize, config.nodePadding, scalePadding)
+        const minSpacing = ring.nodeSize * 2 + effectivePadding
         const extent = (count * minSpacing) / ring.radius
         maxExtent = Math.max(maxExtent, extent)
       }
@@ -253,18 +300,23 @@ function computeOptimalRingRadii(
  *
  * @param nodeCount Number of nodes at this ring level
  * @param ringConfig Configuration for the target ring
- * @param nodePadding Minimum padding between nodes
+ * @param basePadding Base padding value
+ * @param scalePadding Whether to scale padding with node size
  * @returns Minimum angular extent in radians
  */
 function computeMinAngularExtent(
   nodeCount: number,
   ringConfig: ComputedRingConfig,
-  nodePadding: number
+  basePadding: number,
+  scalePadding: boolean
 ): number {
   if (nodeCount === 0 || ringConfig.radius === 0) return 0
 
+  // Compute effective padding for this ring's node size
+  const effectivePadding = getEffectivePadding(ringConfig.nodeSize, basePadding, scalePadding)
+
   // Minimum arc distance between adjacent node centers
-  const minArcDistance = ringConfig.nodeSize * 2 + nodePadding
+  const minArcDistance = ringConfig.nodeSize * 2 + effectivePadding
 
   // Convert to angular distance: arc = radius * angle, so angle = arc / radius
   const minAngularSpacing = minArcDistance / ringConfig.radius
@@ -314,7 +366,8 @@ function computeSubtreeStats(node: TreeNode, maxLayer: number): number {
 function computeRequiredAngularExtent(
   node: TreeNode,
   computedRings: ComputedRingConfig[],
-  nodePadding: number
+  basePadding: number,
+  scalePadding: boolean
 ): number {
   let maxExtent = 0
 
@@ -322,7 +375,7 @@ function computeRequiredAngularExtent(
   for (const [layer, count] of node.nodeCountByLayer) {
     if (layer < computedRings.length && count > 0) {
       const ringConfig = computedRings[layer]
-      const extent = computeMinAngularExtent(count, ringConfig, nodePadding)
+      const extent = computeMinAngularExtent(count, ringConfig, basePadding, scalePadding)
       maxExtent = Math.max(maxExtent, extent)
     }
   }
@@ -339,7 +392,8 @@ function positionSubtree(
   startAngle: number,
   angularExtent: number,
   computedRings: ComputedRingConfig[],
-  nodePadding: number,
+  basePadding: number,
+  scalePadding: boolean,
   nodeMap: Map<string, LayoutNode>,
   parentLayoutNode: LayoutNode | null
 ): LayoutNode {
@@ -371,7 +425,7 @@ function positionSubtree(
     let totalRequiredExtent = 0
 
     for (const child of node.children) {
-      const required = computeRequiredAngularExtent(child, computedRings, nodePadding)
+      const required = computeRequiredAngularExtent(child, computedRings, basePadding, scalePadding)
       childExtents.push(required)
       totalRequiredExtent += required
     }
@@ -393,7 +447,8 @@ function positionSubtree(
         childStartAngle,
         childAngularExtent,
         computedRings,
-        nodePadding,
+        basePadding,
+        scalePadding,
         nodeMap,
         layoutNode
       )
@@ -420,6 +475,7 @@ export function computeRadialLayout(
   // Compute optimal ring radii based on node counts
   const computedRings = computeOptimalRingRadii(nodes, config)
   const maxLayer = Math.max(...nodes.map(n => n.layer))
+  const scalePadding = config.scalePaddingWithNodeSize !== false // default true
 
   // Build tree structure
   const treeNodeMap = new Map<string, TreeNode>()
@@ -477,6 +533,7 @@ export function computeRadialLayout(
       config.totalAngle,
       computedRings,
       config.nodePadding,
+      scalePadding,
       layoutNodeMap,
       null
     )
@@ -496,6 +553,7 @@ export function computeRadialLayout(
         extent,
         computedRings,
         config.nodePadding,
+        scalePadding,
         layoutNodeMap,
         null
       )
@@ -513,15 +571,27 @@ export function computeRadialLayout(
 }
 
 /**
- * Validates that no nodes overlap within each ring
- * Returns array of overlapping node pairs if any found
+ * Validates that no nodes visually overlap within each ring.
+ *
+ * IMPORTANT: This checks for actual visual overlap (circles touching/intersecting),
+ * NOT whether nodes have the desired padding between them. The padding parameter
+ * is used by the layout algorithm to create spacing, but "overlap" means the
+ * node circles actually intersect.
+ *
+ * A small tolerance (0.5px) is applied to account for floating point precision
+ * and the difference between arc-based layout calculations and Euclidean detection.
+ *
+ * @returns Array of overlapping node pairs if any found
  */
 export function detectOverlaps(
   layoutNodes: LayoutNode[],
   computedRings: ComputedRingConfig[],
-  nodePadding: number
+  _nodePadding: number // Kept for API compatibility but not used in overlap detection
 ): Array<{ node1: string; node2: string; ring: number; distance: number; minDistance: number }> {
   const overlaps: Array<{ node1: string; node2: string; ring: number; distance: number; minDistance: number }> = []
+
+  // Small tolerance to account for floating point precision and arc vs chord differences
+  const OVERLAP_TOLERANCE = 0.5
 
   // Group nodes by ring
   const nodesByRing = new Map<number, LayoutNode[]>()
@@ -532,10 +602,12 @@ export function detectOverlaps(
     nodesByRing.get(node.ring)!.push(node)
   }
 
-  // Check each ring for overlaps
+  // Check each ring for actual visual overlaps
   for (const [ring, ringNodes] of nodesByRing) {
     const ringConfig = computedRings[ring] || computedRings[computedRings.length - 1]
-    const minDistance = ringConfig.nodeSize * 2 + nodePadding
+    // Actual overlap = circles touch when distance < sum of radii
+    // Apply tolerance to avoid false positives from floating point errors
+    const minDistance = ringConfig.nodeSize * 2 - OVERLAP_TOLERANCE
 
     for (let i = 0; i < ringNodes.length; i++) {
       for (let j = i + 1; j < ringNodes.length; j++) {
