@@ -15,6 +15,45 @@ npm run preview   # Preview production build
 npm run lint      # Run ESLint
 ```
 
+## Directory Structure
+
+```
+phase1/
+├── docs/                    # Documentation
+│   ├── phases/              # Phase planning documents (PHASE_0.md - PHASE_5.md)
+│   ├── instructions.md      # Implementation checklist
+│   └── PRE_LAUNCH_CHECKLIST.md
+├── public/
+│   └── data/                # Graph data files
+│       ├── precompute/      # Precomputed graph variants
+│       ├── v2_1_graph.json
+│       └── v2_1_visualization_final.json
+├── src/
+│   ├── components/          # React components (future)
+│   │   ├── views/           # GlobalView, LocalView
+│   │   ├── navigation/      # NavigationBar, Breadcrumb
+│   │   └── panels/          # QuickActionsPanel, FilterPanel, SearchBar
+│   ├── layouts/             # Layout algorithms (RadialLayout, SugiyamaLayout)
+│   ├── utils/               # Utilities (EdgeBundling, filterUtils, searchIndex)
+│   ├── store/               # Zustand state management
+│   ├── types/               # TypeScript interfaces
+│   │   └── index.ts
+│   ├── styles/              # CSS files
+│   │   ├── App.css
+│   │   └── index.css
+│   ├── assets/
+│   ├── App.tsx              # Main application component
+│   └── main.tsx             # Entry point
+├── CLAUDE.md
+├── README.md
+├── index.html
+├── package.json
+├── tsconfig.json
+├── tsconfig.app.json
+├── tsconfig.node.json
+└── vite.config.ts
+```
+
 ## Architecture
 
 ### Data Format
@@ -27,23 +66,34 @@ This app only supports v2.1 format with 6 rings:
 - **Ring 4**: Indicator Groups
 - **Ring 5**: Indicators
 
-Primary data file: `/public/v2_1_graph.json`
+Primary data file: `/public/data/v2_1_visualization_final.json`
 
-Additional precomputed graphs are in `/public/precompute/` with naming convention:
+Additional precomputed graphs are in `/public/data/precompute/` with naming convention:
 `graph_{nodes}n_{layers}l_{scoring}.json` (e.g., `graph_0100n_05l_composite.json`)
 
 ### Node Data Structure
 
-**v2.1 nodes** (`RawNodeV21` interface in `App.tsx`):
+**v2.1 nodes** (`RawNodeV21` interface in `src/types/index.ts`):
 - `layer` (0-5): Ring position
 - `node_type`: 'root' | 'outcome_category' | 'coarse_domain' | 'fine_domain' | 'indicator'
 - `parent` / `children`: Hierarchical relationships
 - `shap_importance`, `in_degree`, `out_degree`: Node metrics
 - `domain` / `subdomain`: Categorization fields
 
+### Type Definitions
+
+All TypeScript interfaces are centralized in `src/types/index.ts`:
+- `SemanticPath`: Domain/subdomain path info
+- `RawNodeV21`: Raw node data from JSON
+- `RawEdge`: Edge data structure
+- `GraphDataV21`: Complete graph data with metadata
+- `PositionedNode`: Node with computed x/y coordinates
+- `StructuralEdge`: Parent-child edge for tree skeleton
+- `RingConfig`: Ring radius and label configuration
+
 ### Rendering Pipeline
 
-The entire visualization is contained in `src/App.tsx`. The `loadAndRender()` callback orchestrates:
+The visualization is contained in `src/App.tsx`. The `loadAndRender()` callback orchestrates:
 
 1. **Data Loading**: Fetches JSON from `DATA_FILE` constant
 2. **Layer Grouping**: Groups nodes by their `layer` field into `nodesByLayer`
@@ -80,7 +130,7 @@ React state in `App.tsx`:
 All defined at the top of `App.tsx`:
 
 - `RING_CONFIGS`: Array defining radius and label for each of the 6 rings
-- `DATA_FILE`: Path to the JSON data file (currently `/v2_1_graph.json`)
+- `DATA_FILE`: Path to the JSON data file (`/data/v2_1_visualization_final.json`)
 - `DOMAIN_COLORS`: Color mapping for 9 domain categories:
   - Health (#E91E63), Education (#FF9800), Economic (#4CAF50)
   - Governance (#9C27B0), Environment (#00BCD4), Demographics (#795548)
@@ -93,3 +143,11 @@ All defined at the top of `App.tsx`:
 - Ring breakdown (left): Node count per ring
 - Domain legend (top right): Color-coded with counts
 - Node detail panel (bottom center): Appears on node click, shows label, description, domain tags
+
+## Phase 1 Implementation Plan
+
+See `docs/instructions.md` for the complete Phase 1 MVP checklist covering:
+- Week 1: Global View - Radial Layout Engine
+- Week 2: Local View - Sugiyama DAG Flowchart
+- Week 3: Navigation & State Management
+- Week 4: Filters & Search

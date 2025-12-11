@@ -1,86 +1,34 @@
 import { useEffect, useRef, useState, useCallback } from 'react'
 import * as d3 from 'd3'
-import './App.css'
+import './styles/App.css'
+import type {
+  RawNodeV21,
+  GraphDataV21,
+  PositionedNode,
+  StructuralEdge
+} from './types'
+import {
+  computeRadialLayout,
+  detectOverlaps,
+  computeLayoutStats,
+  type LayoutConfig,
+  type LayoutNode
+} from './layouts/RadialLayout'
+import { LayoutControls } from './components/LayoutControls'
 
 /**
  * Semantic hierarchy visualization with concentric rings - v2.1 only
  * 6 rings: Root → Outcomes → Coarse Domains → Fine Domains → Indicator Groups → Indicators
  */
 
-interface SemanticPath {
-  domain: string
-  subdomain: string
-  fine_cluster: string
-  full_path: string
-}
-
-interface RawNodeV21 {
-  id: string | number
-  label: string
-  description?: string
-  layer: number
-  node_type: 'root' | 'outcome_category' | 'coarse_domain' | 'fine_domain' | 'indicator'
-  domain: string | null
-  subdomain: string | null
-  shap_importance: number
-  in_degree: number
-  out_degree: number
-  label_source: string
-  parent?: string | number
-  children?: (string | number)[]
-  indicator_count?: number
-}
-
-interface RawEdge {
-  source: string
-  target: string
-  weight?: number
-  relationship?: 'causal' | 'hierarchical'
-}
-
-interface GraphDataV21 {
-  nodes: RawNodeV21[]
-  edges: RawEdge[]
-  hierarchy: Record<string, unknown>
-  outcomes?: unknown
-  metadata: {
-    version: string
-    statistics: {
-      total_nodes: number
-      layers: Record<string, number>
-    }
-  }
-}
-
-interface PositionedNode {
-  id: string
-  label: string
-  description: string
-  semanticPath: SemanticPath
-  isDriver: boolean
-  isOutcome: boolean
-  shapImportance: number
-  degree: number
-  ring: number
-  x: number
-  y: number
-}
-
-interface StructuralEdge {
-  sourceId: string
-  targetId: string
-  sourceRing: number
-  targetRing: number
-}
-
-// Ring configuration for v2.1
-const RING_CONFIGS = [
-  { radius: 50, label: 'Root' },
-  { radius: 180, label: 'Outcomes' },
-  { radius: 380, label: 'Coarse Domains' },
-  { radius: 650, label: 'Fine Domains' },
-  { radius: 1000, label: 'Indicator Groups' },
-  { radius: 1450, label: 'Indicators' },
+// Default ring configuration for v2.1 with node sizes
+const DEFAULT_RING_CONFIGS = [
+  { radius: 0, nodeSize: 15, label: 'Root' },        // Ring 0: Root at center
+  { radius: 180, nodeSize: 12, label: 'Outcomes' },  // Ring 1
+  { radius: 380, nodeSize: 8, label: 'Coarse Domains' },  // Ring 2
+  { radius: 650, nodeSize: 6, label: 'Fine Domains' },    // Ring 3
+  { radius: 1000, nodeSize: 5, label: 'Indicator Groups' }, // Ring 4
+  { radius: 1450, nodeSize: 3, label: 'Indicators' },  // Ring 5
 ]
 
 const DOMAIN_COLORS: Record<string, string> = {
@@ -95,16 +43,74 @@ const DOMAIN_COLORS: Record<string, string> = {
   'Research': '#009688'
 }
 
-const DATA_FILE = '/v2_1_visualization_final.json'
+const DATA_FILE = '/data/v2_1_visualization_final.json'
+
+const DEFAULT_NODE_PADDING = 2
+const MIN_RING_GAP = 80
+
+/**
+ * Converts a LayoutNode to a PositionedNode for rendering
+ */
+function toPositionedNode(layoutNode: LayoutNode): PositionedNode {
+  const raw = layoutNode.rawNode
+  return {
+    id: layoutNode.id,
+    label: raw.label.replace(/_/g, ' '),
+    description: raw.description || getDefaultDescription(raw),
+    semanticPath: {
+      domain: raw.domain || '',
+      subdomain: raw.subdomain || '',
+      fine_cluster: '',
+      full_path: raw.label
+    },
+    isDriver: raw.node_type === 'indicator' && raw.out_degree > 0,
+    isOutcome: raw.node_type === 'outcome_category',
+    shapImportance: raw.shap_importance,
+    degree: raw.in_degree + raw.out_degree,
+    ring: layoutNode.ring,
+    x: layoutNode.x,
+    y: layoutNode.y
+  }
+}
+
+/**
+ * Generates default description based on node type
+ */
+function getDefaultDescription(node: RawNodeV21): string {
+  switch (node.node_type) {
+    case 'root':
+      return 'Root'
+    case 'outcome_category':
+      return `${node.indicator_count || 0} indicators`
+    case 'coarse_domain':
+      return `Coarse Domain: ${node.label}`
+    case 'fine_domain':
+      return `Fine Domain: ${node.label}`
+    case 'indicator':
+      return ''
+    default:
+      return ''
+  }
+}
 
 function App() {
   const svgRef = useRef<SVGSVGElement>(null)
   const [loading, setLoading] = useState(true)
   const [error, setError] = useState<string | null>(null)
-  const [stats, setStats] = useState<{ nodes: number; structuralEdges: number; outcomes: number; drivers: number } | null>(null)
+  const [stats, setStats] = useState<{
+    nodes: number
+    structuralEdges: number
+    outcomes: number
+    drivers: number
+    overlaps: number
+  } | null>(null)
   const [domainCounts, setDomainCounts] = useState<Record<string, number>>({})
   const [selectedNode, setSelectedNode] = useState<PositionedNode | null>(null)
-  const [ringStats, setRingStats] = useState<Array<{ label: string; count: number }>>([])
+  const [ringStats, setRingStats] = useState<Array<{ label: string; count: number; minDistance: number }>>([])
+
+  // Layout configuration state - can be modified via sliders
+  const [ringConfigs, setRingConfigs] = useState(DEFAULT_RING_CONFIGS)
+  const [nodePadding, setNodePadding] = useState(DEFAULT_NODE_PADDING)
 
   const loadAndRender = useCallback(async () => {
     setLoading(true)
@@ -115,227 +121,78 @@ function App() {
       if (!response.ok) throw new Error(`Failed to load: ${response.status}`)
       const data: GraphDataV21 = await response.json()
 
-      const positionedNodes: PositionedNode[] = []
-      const nodeMap = new Map<string, PositionedNode>()
-      const structuralEdges: StructuralEdge[] = []
-
-      // Helper to add node to map
-      const addNode = (node: PositionedNode) => {
-        positionedNodes.push(node)
-        nodeMap.set(node.id, node)
+      // Build layout config from current state
+      const layoutConfig: LayoutConfig = {
+        rings: ringConfigs,
+        nodePadding,
+        startAngle: -Math.PI / 2,
+        totalAngle: 2 * Math.PI,
+        minRingGap: MIN_RING_GAP
       }
 
-      // Group nodes by layer
-      const nodesByLayer: Record<number, RawNodeV21[]> = {}
-      data.nodes.forEach(n => {
-        if (!nodesByLayer[n.layer]) nodesByLayer[n.layer] = []
-        nodesByLayer[n.layer].push(n)
-      })
+      // Compute layout using RadialLayout algorithm
+      const layoutResult = computeRadialLayout(data.nodes, layoutConfig)
+      const { computedRings } = layoutResult
+
+      // Log computed ring radii
+      console.log('Computed ring radii:', computedRings.map((r, i) =>
+        `Ring ${i}: ${r.radius.toFixed(0)}px (required: ${r.requiredRadius.toFixed(0)}px, nodes: ${r.nodeCount})`
+      ))
+
+      // Detect any overlaps
+      const overlaps = detectOverlaps(layoutResult.nodes, computedRings, nodePadding)
+      if (overlaps.length > 0) {
+        console.warn(`Found ${overlaps.length} overlapping node pairs:`, overlaps.slice(0, 10))
+      }
+
+      // Compute layout statistics
+      const layoutStats = computeLayoutStats(layoutResult.nodes, computedRings, nodePadding)
+
+      // Convert to PositionedNodes
+      const positionedNodes: PositionedNode[] = layoutResult.nodes.map(toPositionedNode)
+      const nodeMap = new Map<string, PositionedNode>()
+      positionedNodes.forEach(n => nodeMap.set(n.id, n))
+
+      // Build structural edges
+      const structuralEdges: StructuralEdge[] = []
+      for (const layoutNode of layoutResult.nodes) {
+        if (layoutNode.parent) {
+          structuralEdges.push({
+            sourceId: layoutNode.parent.id,
+            targetId: layoutNode.id,
+            sourceRing: layoutNode.parent.ring,
+            targetRing: layoutNode.ring
+          })
+        }
+      }
 
       // Count domains for legend (from indicators, layer 5)
       const counts: Record<string, number> = {}
-      ;(nodesByLayer[5] || []).forEach(n => {
-        if (n.domain) counts[n.domain] = (counts[n.domain] || 0) + 1
+      data.nodes.forEach(n => {
+        if (n.layer === 5 && n.domain) {
+          counts[n.domain] = (counts[n.domain] || 0) + 1
+        }
       })
       setDomainCounts(counts)
 
-      // Build parent-children mapping
-      const childrenByParent = new Map<string | number, RawNodeV21[]>()
-      data.nodes.forEach(n => {
-        if (n.parent !== undefined) {
-          const parentKey = String(n.parent)
-          if (!childrenByParent.has(parentKey)) childrenByParent.set(parentKey, [])
-          childrenByParent.get(parentKey)!.push(n)
-        }
-      })
-
-      // Layer 0: Root (single node at center)
-      const rootNodes = nodesByLayer[0] || []
-      rootNodes.forEach(n => {
-        addNode({
-          id: String(n.id),
-          label: n.label,
-          description: n.description || 'Root',
-          semanticPath: { domain: '', subdomain: '', fine_cluster: '', full_path: 'Root' },
-          isDriver: false,
-          isOutcome: false,
-          shapImportance: n.shap_importance,
-          degree: n.out_degree,
-          ring: 0,
-          x: 0,
-          y: 0
-        })
-      })
-
-      // Layer 1: Outcomes (9 QoL categories) - evenly distributed
-      const outcomeNodes = nodesByLayer[1] || []
-      outcomeNodes.forEach((n, i) => {
-        const angle = (2 * Math.PI * i) / Math.max(outcomeNodes.length, 1)
-        const r = RING_CONFIGS[1].radius
-        addNode({
-          id: String(n.id),
-          label: n.label,
-          description: n.description || `${n.indicator_count || 0} indicators`,
-          semanticPath: { domain: n.domain || '', subdomain: '', fine_cluster: '', full_path: n.label },
-          isDriver: false,
-          isOutcome: true,
-          shapImportance: n.shap_importance,
-          degree: n.out_degree,
-          ring: 1,
-          x: r * Math.cos(angle - Math.PI / 2),
-          y: r * Math.sin(angle - Math.PI / 2)
-        })
-        // Edge from root to outcome
-        if (n.parent !== undefined) {
-          structuralEdges.push({ sourceId: String(n.parent), targetId: String(n.id), sourceRing: 0, targetRing: 1 })
-        }
-      })
-
-      // Layer 2: Coarse Domains - position near their parent outcome
-      const coarseNodes = nodesByLayer[2] || []
-      outcomeNodes.forEach(outcome => {
-        const parentNode = nodeMap.get(String(outcome.id))
-        if (!parentNode) return
-        const parentAngle = Math.atan2(parentNode.y, parentNode.x) + Math.PI / 2
-        const children = childrenByParent.get(String(outcome.id)) || []
-        const coarseChildren = children.filter(c => c.layer === 2)
-        const angleSpread = (2 * Math.PI / outcomeNodes.length) * 0.85
-
-        coarseChildren.forEach((n, i) => {
-          const angleOffset = (i - (coarseChildren.length - 1) / 2) * (angleSpread / Math.max(coarseChildren.length - 1, 1))
-          const angle = parentAngle + angleOffset
-          const r = RING_CONFIGS[2].radius
-          addNode({
-            id: String(n.id),
-            label: n.label.replace(/_/g, ' '),
-            description: n.description || `Coarse Domain: ${n.label}`,
-            semanticPath: { domain: n.domain || '', subdomain: '', fine_cluster: '', full_path: n.label },
-            isDriver: false,
-            isOutcome: false,
-            shapImportance: n.shap_importance,
-            degree: n.out_degree,
-            ring: 2,
-            x: r * Math.cos(angle - Math.PI / 2),
-            y: r * Math.sin(angle - Math.PI / 2)
-          })
-          structuralEdges.push({ sourceId: String(outcome.id), targetId: String(n.id), sourceRing: 1, targetRing: 2 })
-        })
-      })
-
-      // Layer 3: Fine Domains - position near their parent coarse domain
-      const fineNodes = nodesByLayer[3] || []
-      coarseNodes.forEach(coarse => {
-        const parentNode = nodeMap.get(String(coarse.id))
-        if (!parentNode) return
-        const parentAngle = Math.atan2(parentNode.y, parentNode.x) + Math.PI / 2
-        const children = childrenByParent.get(String(coarse.id)) || []
-        const fineChildren = children.filter(c => c.layer === 3)
-        const angleSpread = 0.25
-
-        fineChildren.forEach((n, i) => {
-          const angleOffset = (i - (fineChildren.length - 1) / 2) * (angleSpread / Math.max(fineChildren.length - 1, 1))
-          const angle = parentAngle + angleOffset
-          const r = RING_CONFIGS[3].radius
-          addNode({
-            id: String(n.id),
-            label: n.label.replace(/_/g, ' '),
-            description: n.description || `Fine Domain: ${n.label}`,
-            semanticPath: { domain: n.domain || '', subdomain: n.subdomain || '', fine_cluster: n.label, full_path: n.label },
-            isDriver: false,
-            isOutcome: false,
-            shapImportance: n.shap_importance,
-            degree: n.out_degree,
-            ring: 3,
-            x: r * Math.cos(angle - Math.PI / 2),
-            y: r * Math.sin(angle - Math.PI / 2)
-          })
-          structuralEdges.push({ sourceId: String(coarse.id), targetId: String(n.id), sourceRing: 2, targetRing: 3 })
-        })
-      })
-
-      // Layer 4: Indicator Groups - position near their parent fine domain
-      const indicatorGroupNodes = nodesByLayer[4] || []
-      fineNodes.forEach(fine => {
-        const parentNode = nodeMap.get(String(fine.id))
-        if (!parentNode) return
-        const parentAngle = Math.atan2(parentNode.y, parentNode.x) + Math.PI / 2
-        const children = childrenByParent.get(String(fine.id)) || []
-        const groupChildren = children.filter(c => c.layer === 4)
-        const angleSpread = 0.15
-
-        groupChildren.forEach((n, i) => {
-          const angleOffset = (i - (groupChildren.length - 1) / 2) * (angleSpread / Math.max(groupChildren.length - 1, 1))
-          const angle = parentAngle + angleOffset
-          const r = RING_CONFIGS[4].radius
-          addNode({
-            id: String(n.id),
-            label: n.label.replace(/_/g, ' '),
-            description: n.description || `Indicator Group: ${n.label}`,
-            semanticPath: { domain: n.domain || '', subdomain: n.subdomain || '', fine_cluster: String(fine.id), full_path: n.label },
-            isDriver: false,
-            isOutcome: false,
-            shapImportance: n.shap_importance,
-            degree: n.in_degree + n.out_degree,
-            ring: 4,
-            x: r * Math.cos(angle - Math.PI / 2),
-            y: r * Math.sin(angle - Math.PI / 2)
-          })
-          structuralEdges.push({ sourceId: String(fine.id), targetId: String(n.id), sourceRing: 3, targetRing: 4 })
-        })
-      })
-
-      // Layer 5: Indicators - position near their parent indicator group
-      indicatorGroupNodes.forEach(group => {
-        const parentNode = nodeMap.get(String(group.id))
-        if (!parentNode) return
-        const parentAngle = Math.atan2(parentNode.y, parentNode.x) + Math.PI / 2
-        const children = childrenByParent.get(String(group.id)) || []
-        const indicatorChildren = children.filter(c => c.layer === 5)
-        const angleSpread = 0.08
-
-        indicatorChildren.forEach((n, i) => {
-          const angleOffset = (i - (indicatorChildren.length - 1) / 2) * (angleSpread / Math.max(indicatorChildren.length - 1, 1))
-          const angle = parentAngle + angleOffset
-          const r = RING_CONFIGS[5].radius
-          addNode({
-            id: String(n.id),
-            label: n.label,
-            description: n.description || '',
-            semanticPath: { domain: n.domain || '', subdomain: n.subdomain || '', fine_cluster: String(group.id), full_path: n.label },
-            isDriver: n.node_type === 'indicator' && n.out_degree > 0,
-            isOutcome: false,
-            shapImportance: n.shap_importance,
-            degree: n.in_degree + n.out_degree,
-            ring: 5,
-            x: r * Math.cos(angle - Math.PI / 2),
-            y: r * Math.sin(angle - Math.PI / 2)
-          })
-          structuralEdges.push({ sourceId: String(group.id), targetId: String(n.id), sourceRing: 4, targetRing: 5 })
-        })
-      })
-
-      // Compute outcome count
-      const outcomeCount = positionedNodes.filter(n => n.isOutcome).length
-
-      // Compute ring stats (nodes per ring)
-      const ringCounts: Record<number, number> = {}
-      positionedNodes.forEach(n => {
-        ringCounts[n.ring] = (ringCounts[n.ring] || 0) + 1
-      })
-      const computedRingStats = RING_CONFIGS.map((ring, i) => ({
+      // Compute ring stats
+      const computedRingStats = ringConfigs.map((ring, i) => ({
         label: ring.label,
-        count: ringCounts[i] || 0
+        count: layoutStats.nodesPerRing.get(i) || 0,
+        minDistance: layoutStats.minDistancePerRing.get(i) || 0
       }))
       setRingStats(computedRingStats)
 
-      // Count drivers from positioned nodes
+      // Compute outcome count
+      const outcomeCount = positionedNodes.filter(n => n.isOutcome).length
       const driverCount = positionedNodes.filter(n => n.isDriver).length
 
       setStats({
         nodes: positionedNodes.length,
         structuralEdges: structuralEdges.length,
         outcomes: outcomeCount,
-        drivers: driverCount
+        drivers: driverCount,
+        overlaps: overlaps.length
       })
 
       // === D3 Rendering ===
@@ -356,13 +213,13 @@ function App() {
 
       svg.call(zoom)
 
-      // Initial view
-      const maxRadius = RING_CONFIGS[RING_CONFIGS.length - 1].radius
+      // Initial view - find max radius dynamically
+      const maxRadius = Math.max(...positionedNodes.map(n => Math.sqrt(n.x * n.x + n.y * n.y)))
       const scale = Math.min(width, height) / (maxRadius * 2.5)
       svg.call(zoom.transform, d3.zoomIdentity.translate(width / 2, height / 2).scale(scale))
 
-      // Draw ring circles
-      RING_CONFIGS.forEach((ring, i) => {
+      // Draw ring circles using computed radii (skip ring 0 which is at center)
+      computedRings.slice(1).forEach((ring, i) => {
         g.append('circle')
           .attr('cx', 0)
           .attr('cy', 0)
@@ -378,7 +235,7 @@ function App() {
           .attr('font-size', 12)
           .attr('font-weight', 'bold')
           .attr('fill', '#888')
-          .text(`Ring ${i}: ${ring.label}`)
+          .text(`Ring ${i + 1}: ${ring.label || ringConfigs[i + 1]?.label || ''}`)
       })
 
       // Draw structural edges (tree skeleton)
@@ -397,20 +254,13 @@ function App() {
         .attr('stroke-opacity', d => d.sourceRing <= 2 ? 0.6 : (d.sourceRing <= 4 ? 0.3 : 0.15))
         .style('pointer-events', 'none')
 
-      // Node styling
+      // Node styling - all nodes colored by domain
       const getColor = (n: PositionedNode): string => {
-        if (n.isOutcome) return '#FFD700'
-        if (n.isDriver) return '#2196F3'
         return DOMAIN_COLORS[n.semanticPath.domain] || '#9E9E9E'
       }
 
       const getSize = (n: PositionedNode): number => {
-        if (n.ring === 0) return 15 // Root
-        if (n.isOutcome) return 12  // Outcomes
-        if (n.ring === 2) return 8  // Coarse domains
-        if (n.ring === 3) return 6  // Fine domains
-        if (n.ring === 4) return 5  // Indicator groups
-        return 3 // Indicators
+        return computedRings[n.ring]?.nodeSize || 3
       }
 
       // Draw nodes
@@ -423,8 +273,8 @@ function App() {
         .attr('cy', d => d.y)
         .attr('r', d => getSize(d))
         .attr('fill', d => getColor(d))
-        .attr('stroke', d => d.isOutcome ? '#B8860B' : (d.ring <= 1 ? '#333' : '#fff'))
-        .attr('stroke-width', d => d.isOutcome ? 2 : (d.ring <= 1 ? 1.5 : 0.5))
+        .attr('stroke', d => d.ring <= 1 ? '#333' : '#fff')
+        .attr('stroke-width', d => d.ring <= 1 ? 1.5 : 0.5)
         .style('cursor', 'pointer')
         .on('click', (_, d) => setSelectedNode(d))
         .on('mouseenter', function(_, d) {
@@ -441,7 +291,7 @@ function App() {
         .append('text')
         .attr('class', 'node-label')
         .attr('x', d => d.x)
-        .attr('y', d => d.y + getSize(d) + 10)
+        .attr('y', d => d.y + getSize(d) + 14)
         .attr('text-anchor', 'middle')
         .attr('font-size', 11)
         .attr('font-weight', 'bold')
@@ -453,7 +303,7 @@ function App() {
       setError(err instanceof Error ? err.message : 'Failed to load')
       setLoading(false)
     }
-  }, [])
+  }, [ringConfigs, nodePadding])
 
   useEffect(() => {
     loadAndRender()
@@ -466,7 +316,7 @@ function App() {
         background: 'white', padding: '10px 20px', borderRadius: 4,
         boxShadow: '0 2px 4px rgba(0,0,0,0.1)', zIndex: 100
       }}>
-        <h2 style={{ margin: 0, fontSize: 16 }}>Semantic Hierarchy v2.1 - Structural Tree</h2>
+        <h2 style={{ margin: 0, fontSize: 16 }}>Semantic Hierarchy v2.1 - Radial Layout</h2>
       </div>
 
       {loading && <div style={{ position: 'absolute', top: '50%', left: '50%', transform: 'translate(-50%, -50%)' }}>Loading...</div>}
@@ -478,12 +328,15 @@ function App() {
           <div><strong>Structural Edges:</strong> {stats.structuralEdges.toLocaleString()}</div>
           <div><strong>Outcomes:</strong> {stats.outcomes}</div>
           <div><strong>Drivers:</strong> {stats.drivers.toLocaleString()}</div>
+          <div style={{ marginTop: 6, color: stats.overlaps > 0 ? '#e53935' : '#4caf50' }}>
+            <strong>Overlaps:</strong> {stats.overlaps === 0 ? 'None ✓' : stats.overlaps}
+          </div>
           <div style={{ marginTop: 10, fontSize: 11, color: '#666' }}>Scroll to zoom, drag to pan</div>
         </div>
       )}
 
       {ringStats.length > 0 && (
-        <div style={{ position: 'absolute', top: 200, left: 10, background: 'white', padding: 12, borderRadius: 4, boxShadow: '0 2px 4px rgba(0,0,0,0.1)', fontSize: 12, maxWidth: 200 }}>
+        <div style={{ position: 'absolute', top: 220, left: 10, background: 'white', padding: 12, borderRadius: 4, boxShadow: '0 2px 4px rgba(0,0,0,0.1)', fontSize: 12, maxWidth: 220 }}>
           <div style={{ fontWeight: 'bold', marginBottom: 8, fontSize: 13 }}>Rings ({ringStats.length})</div>
           {ringStats.map((ring, i) => (
             <div key={i} style={{ display: 'flex', justifyContent: 'space-between', marginBottom: 3, paddingBottom: 3, borderBottom: i < ringStats.length - 1 ? '1px solid #eee' : 'none' }}>
@@ -504,18 +357,16 @@ function App() {
               <span style={{ fontSize: 11, color: '#888', marginLeft: 6 }}>({count})</span>
             </div>
           ))}
-          <div style={{ borderTop: '1px solid #eee', marginTop: 8, paddingTop: 8 }}>
-            <div style={{ display: 'flex', alignItems: 'center', marginBottom: 4 }}>
-              <div style={{ width: 12, height: 12, borderRadius: '50%', backgroundColor: '#FFD700', marginRight: 8, border: '2px solid #B8860B' }} />
-              <span style={{ fontSize: 12 }}>Outcomes</span>
-            </div>
-            <div style={{ display: 'flex', alignItems: 'center' }}>
-              <div style={{ width: 12, height: 12, borderRadius: '50%', backgroundColor: '#2196F3', marginRight: 8 }} />
-              <span style={{ fontSize: 12 }}>Drivers</span>
-            </div>
-          </div>
         </div>
       )}
+
+      {/* Layout Controls */}
+      <LayoutControls
+        ringConfigs={ringConfigs}
+        nodePadding={nodePadding}
+        onRingConfigChange={setRingConfigs}
+        onNodePaddingChange={setNodePadding}
+      />
 
       <svg ref={svgRef} style={{ width: '100%', height: '100%' }} />
 
@@ -528,15 +379,13 @@ function App() {
           <div style={{ display: 'flex', justifyContent: 'space-between', marginBottom: 8 }}>
             <div style={{ display: 'flex', gap: 6, flexWrap: 'wrap' }}>
               <span style={{ padding: '2px 8px', borderRadius: 4, backgroundColor: '#eee', fontSize: 11 }}>
-                Ring {selectedNode.ring}: {RING_CONFIGS[selectedNode.ring]?.label || 'Unknown'}
+                Ring {selectedNode.ring}: {ringConfigs[selectedNode.ring]?.label || 'Unknown'}
               </span>
               {selectedNode.semanticPath.domain && (
                 <span style={{ padding: '2px 8px', borderRadius: 4, backgroundColor: DOMAIN_COLORS[selectedNode.semanticPath.domain] || '#9E9E9E', color: 'white', fontSize: 11, fontWeight: 'bold' }}>
                   {selectedNode.semanticPath.domain}
                 </span>
               )}
-              {selectedNode.isOutcome && <span style={{ padding: '2px 8px', borderRadius: 4, backgroundColor: '#FFD700', fontSize: 11, fontWeight: 'bold' }}>OUTCOME</span>}
-              {selectedNode.isDriver && <span style={{ padding: '2px 8px', borderRadius: 4, backgroundColor: '#2196F3', color: 'white', fontSize: 11, fontWeight: 'bold' }}>DRIVER</span>}
             </div>
             <button onClick={() => setSelectedNode(null)} style={{ background: 'none', border: 'none', fontSize: 18, cursor: 'pointer', color: '#999' }}>×</button>
           </div>
