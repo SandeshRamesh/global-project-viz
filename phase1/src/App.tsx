@@ -81,7 +81,8 @@ const DOMAIN_COLORS: Record<string, string> = {
   'Research': '#009688'
 }
 
-const DATA_FILE = '/data/v2_1_visualization_final.json'
+// Use Vite's base URL for correct path in GitHub Pages
+const DATA_FILE = `${import.meta.env.BASE_URL}data/v2_1_visualization_final.json`
 
 const DEFAULT_NODE_PADDING = 7
 const MIN_RING_GAP = 80
