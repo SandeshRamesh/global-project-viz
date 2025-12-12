@@ -18,6 +18,8 @@ export interface RawNodeV21 {
   domain: string | null
   subdomain: string | null
   shap_importance: number
+  importance: number  // Normalized SHAP importance (0-1) for node sizing
+  shap_raw?: number   // Raw aggregated SHAP value before normalization
   in_degree: number
   out_degree: number
   label_source: string

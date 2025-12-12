@@ -14,6 +14,7 @@ import {
   type LayoutConfig,
   type LayoutNode
 } from './layouts/RadialLayout'
+import LayoutControls from './components/LayoutControls'
 
 /**
  * Semantic hierarchy visualization with concentric rings - v2.1 only
@@ -23,23 +24,49 @@ import {
  * - Click to expand/collapse node children
  * - Hover to see node details
  * - Starts with only root visible, expand to explore hierarchy
+ * - Adjustable ring gap and node sizes via sliders
  */
 
-// Default ring configuration for v2.1 with node sizes
-const DEFAULT_RING_CONFIGS = [
-  { radius: 0, nodeSize: 15, label: 'Quality of Life' },  // Ring 0: Root at center
-  { radius: 180, nodeSize: 12, label: 'Outcomes' },  // Ring 1
-  { radius: 380, nodeSize: 8, label: 'Coarse Domains' },  // Ring 2
-  { radius: 650, nodeSize: 6, label: 'Fine Domains' },    // Ring 3
-  { radius: 1000, nodeSize: 5, label: 'Indicator Groups' }, // Ring 4
-  { radius: 1450, nodeSize: 3, label: 'Indicators' },  // Ring 5
+// Ring labels
+const RING_LABELS = [
+  'Quality of Life',
+  'Outcomes',
+  'Coarse Domains',
+  'Fine Domains',
+  'Indicator Groups',
+  'Indicators'
 ]
+
+// Default ring gap (uniform spacing between rings)
+const DEFAULT_RING_GAP = 150
+
+// Base node size ranges per ring (before multiplier)
+const BASE_SIZE_RANGES: Array<{ min: number; max: number }> = [
+  { min: 12, max: 12 },   // Ring 0: Root - fixed size
+  { min: 3, max: 18 },    // Ring 1: Outcomes
+  { min: 2, max: 14 },    // Ring 2: Coarse Domains
+  { min: 2, max: 12 },    // Ring 3: Fine Domains
+  { min: 1.5, max: 10 },  // Ring 4: Indicator Groups
+  { min: 1, max: 8 },     // Ring 5: Indicators
+]
+
+/**
+ * Generate ring configs with equal spacing
+ */
+function generateRingConfigs(gap: number, sizeMultipliers: number[]) {
+  return RING_LABELS.map((label, i) => ({
+    radius: i * gap,  // Equal spacing: ring N is at N * gap
+    nodeSize: BASE_SIZE_RANGES[i].max * (sizeMultipliers[i] || 1),
+    label
+  }))
+}
 
 /** Extended PositionedNode with parent reference for expansion logic */
 interface ExpandableNode extends PositionedNode {
   parentId: string | null
   childIds: string[]
   hasChildren: boolean
+  importance: number  // Normalized SHAP importance (0-1) for node sizing
 }
 
 const DOMAIN_COLORS: Record<string, string> = {
@@ -77,6 +104,7 @@ function toExpandableNode(layoutNode: LayoutNode): ExpandableNode {
     isDriver: raw.node_type === 'indicator' && raw.out_degree > 0,
     isOutcome: raw.node_type === 'outcome_category',
     shapImportance: raw.shap_importance,
+    importance: raw.importance ?? 0,  // Normalized SHAP importance for sizing
     degree: raw.in_degree + raw.out_degree,
     ring: layoutNode.ring,
     x: layoutNode.x,
@@ -125,8 +153,24 @@ function App() {
   const [ringStats, setRingStats] = useState<Array<{ label: string; count: number; minDistance: number }>>([])
 
   // Layout configuration state
-  const [ringConfigs] = useState(DEFAULT_RING_CONFIGS)
+  const [ringGap, setRingGap] = useState(DEFAULT_RING_GAP)
+  const [nodeSizeMultipliers, setNodeSizeMultipliers] = useState<number[]>([1.0, 1.5, 2.4, 1.4, 0.8, 0.7])
   const [nodePadding] = useState(DEFAULT_NODE_PADDING)
+
+  // Compute ring configs from gap and multipliers
+  const ringConfigs = useMemo(
+    () => generateRingConfigs(ringGap, nodeSizeMultipliers),
+    [ringGap, nodeSizeMultipliers]
+  )
+
+  // Handler for changing a single ring's size multiplier
+  const handleNodeSizeMultiplierChange = useCallback((ring: number, multiplier: number) => {
+    setNodeSizeMultipliers(prev => {
+      const next = [...prev]
+      next[ring] = multiplier
+      return next
+    })
+  }, [])
 
   // Expansion state - tracks which nodes have their children visible
   const [expandedNodes, setExpandedNodes] = useState<Set<string>>(new Set())
@@ -261,12 +305,14 @@ function App() {
       const data: GraphDataV21 = await response.json()
 
       // Build layout config from current state
+      // useFixedRadii: true ensures sliders directly control ring positions
       const layoutConfig: LayoutConfig = {
         rings: ringConfigs,
         nodePadding,
         startAngle: -Math.PI / 2,
         totalAngle: 2 * Math.PI,
-        minRingGap: MIN_RING_GAP
+        minRingGap: MIN_RING_GAP,
+        useFixedRadii: true
       }
 
       // Compute layout using RadialLayout algorithm
@@ -357,11 +403,9 @@ function App() {
 
     const g = svg.append('g')
 
-    // Minimum zoom scale at which labels are visible
-    const LABEL_VISIBILITY_THRESHOLD = 0.5
-
-    // Track last label visibility state to avoid unnecessary DOM updates
-    let labelsCurrentlyVisible = true
+    // Minimum effective font size (in screen pixels) for text to be visible
+    // Text is hidden if fontSize * zoomScale < this threshold
+    const MIN_READABLE_FONT_SIZE = 6
 
     // Zoom - preserve transform across re-renders
     const zoom = d3.zoom<SVGSVGElement, unknown>()
@@ -369,11 +413,40 @@ function App() {
       .on('zoom', (event) => {
         g.attr('transform', event.transform)
         currentTransformRef.current = event.transform
-        // Only update label visibility when crossing threshold
-        const shouldShowLabels = event.transform.k >= LABEL_VISIBILITY_THRESHOLD
-        if (shouldShowLabels !== labelsCurrentlyVisible) {
-          labelsCurrentlyVisible = shouldShowLabels
-          g.selectAll('text.node-label').style('opacity', shouldShowLabels ? 1 : 0)
+        // Update label visibility per ring - if most labels in a ring are too small, hide all
+        const zoomScale = event.transform.k
+
+        // Group labels by ring and check visibility
+        const labelsByRing = new Map<number, Element[]>()
+        const visibleCountByRing = new Map<number, number>()
+        const totalCountByRing = new Map<number, number>()
+
+        g.selectAll('text.node-label').each(function() {
+          const el = this as Element
+          const label = d3.select(el)
+          const ring = parseInt(label.attr('data-ring') || '0')
+          const fontSize = parseFloat(label.attr('font-size') || '10')
+          const effectiveSize = fontSize * zoomScale
+          const isReadable = effectiveSize >= MIN_READABLE_FONT_SIZE
+
+          if (!labelsByRing.has(ring)) {
+            labelsByRing.set(ring, [])
+            visibleCountByRing.set(ring, 0)
+            totalCountByRing.set(ring, 0)
+          }
+          labelsByRing.get(ring)!.push(el)
+          totalCountByRing.set(ring, (totalCountByRing.get(ring) || 0) + 1)
+          if (isReadable) {
+            visibleCountByRing.set(ring, (visibleCountByRing.get(ring) || 0) + 1)
+          }
+        })
+
+        // Show ring labels only if majority (>50%) are readable
+        for (const [ring, elements] of labelsByRing) {
+          const total = totalCountByRing.get(ring) || 1
+          const visible = visibleCountByRing.get(ring) || 0
+          const showRing = visible / total > 0.5
+          elements.forEach(el => d3.select(el).style('opacity', showRing ? 1 : 0))
         }
       })
 
@@ -446,8 +519,23 @@ function App() {
       return DOMAIN_COLORS[n.semanticPath.domain] || '#9E9E9E'
     }
 
+    /**
+     * Get node size based on SHAP importance and per-ring multiplier.
+     * Uses area-proportional sizing: radius = min + (max - min) * sqrt(importance)
+     * This ensures visual area is proportional to importance value.
+     */
     const getSize = (n: ExpandableNode): number => {
-      return computedRingsState[n.ring]?.nodeSize || 3
+      const baseRange = BASE_SIZE_RANGES[n.ring] || { min: 2, max: 8 }
+      const multiplier = nodeSizeMultipliers[n.ring] || 1
+      const importance = n.importance || 0
+
+      // Apply multiplier to both min and max
+      const min = baseRange.min * multiplier
+      const max = baseRange.max * multiplier
+
+      // Area-proportional: radius scales with sqrt(importance)
+      // so that visual area (π*r²) is proportional to importance
+      return min + (max - min) * Math.sqrt(importance)
     }
 
     // Draw nodes
@@ -460,16 +548,8 @@ function App() {
       .attr('cy', d => d.y)
       .attr('r', d => getSize(d))
       .attr('fill', d => getColor(d))
-      .attr('stroke', d => {
-        if (expandedNodes.has(d.id)) return '#2196F3' // Blue border for expanded
-        if (d.hasChildren) return '#333' // Dark border for expandable
-        return '#fff'
-      })
-      .attr('stroke-width', d => {
-        if (expandedNodes.has(d.id)) return 3
-        if (d.hasChildren) return 2
-        return 0.5
-      })
+      .attr('stroke', '#fff')
+      .attr('stroke-width', 0.5)
       .style('cursor', d => d.hasChildren ? 'pointer' : 'default')
       .on('click', (event, d) => {
         event.stopPropagation()
@@ -498,20 +578,22 @@ function App() {
 
     // Get current zoom scale for initial label visibility
     const currentScale = currentTransformRef.current?.k ?? 1
-    const labelsVisible = currentScale >= LABEL_VISIBILITY_THRESHOLD
 
     // Pre-compute label positions for all label nodes (avoid repeated calculations)
+    // Text size scales with node size but capped to avoid overly large labels
     const labelPositions = new Map<string, { x: number; y: number; anchor: string; rotation: number; fontSize: number }>()
     for (const d of labelNodes) {
       const nodeSize = getSize(d)
-      const baseSize = Math.max(nodeSize * 0.9, 8)
-      const fontSize = d.ring === 5 ? baseSize * 0.7 : baseSize
+      // Smaller text: use nodeSize * 0.5 with lower min/max bounds
+      const baseSize = Math.min(Math.max(nodeSize * 0.5, 5), 10)
+      // Ring 5 gets much smaller text, ring 4 slightly smaller
+      const fontSize = d.ring === 5 ? baseSize * 0.35 : (d.ring === 4 ? baseSize * 0.7 : baseSize)
 
       if (d.ring <= 1) {
-        const offset = nodeSize + fontSize * 0.6 + 8
+        const offset = nodeSize + fontSize * 0.5 + 4
         labelPositions.set(d.id, { x: d.x, y: d.y + offset, anchor: 'middle', rotation: 0, fontSize })
       } else {
-        const offset = nodeSize + fontSize * 0.4 + 4
+        const offset = nodeSize + fontSize * 0.3 + 2
         const angle = Math.atan2(d.y, d.x)
         const angleDeg = angle * (180 / Math.PI)
         const labelX = d.x + Math.cos(angle) * offset
@@ -527,6 +609,24 @@ function App() {
       }
     }
 
+    // Calculate per-ring visibility for initial render
+    const visibleCountByRing = new Map<number, number>()
+    const totalCountByRing = new Map<number, number>()
+    for (const d of labelNodes) {
+      const pos = labelPositions.get(d.id)!
+      const effectiveSize = pos.fontSize * currentScale
+      const isReadable = effectiveSize >= MIN_READABLE_FONT_SIZE
+      totalCountByRing.set(d.ring, (totalCountByRing.get(d.ring) || 0) + 1)
+      if (isReadable) {
+        visibleCountByRing.set(d.ring, (visibleCountByRing.get(d.ring) || 0) + 1)
+      }
+    }
+    const ringVisibility = new Map<number, boolean>()
+    for (const [ring, total] of totalCountByRing) {
+      const visible = visibleCountByRing.get(ring) || 0
+      ringVisibility.set(ring, visible / total > 0.5)
+    }
+
     g.selectAll('text.node-label')
       .data(labelNodes)
       .enter()
@@ -534,6 +634,7 @@ function App() {
       .attr('class', 'node-label')
       .each(function(d) {
         const pos = labelPositions.get(d.id)!
+        const isVisible = ringVisibility.get(d.ring) ?? false
         d3.select(this)
           .attr('x', pos.x)
           .attr('y', pos.y)
@@ -542,12 +643,13 @@ function App() {
           .attr('font-size', pos.fontSize)
           .attr('font-weight', d.ring <= 1 ? 'bold' : 'normal')
           .attr('fill', '#333')
-          .style('opacity', labelsVisible ? 1 : 0)
+          .attr('data-ring', d.ring)
+          .style('opacity', isVisible ? 1 : 0)
           .style('pointer-events', 'none')
           .text(d.label)
       })
 
-  }, [visibleNodes, visibleEdges, computedRingsState, ringConfigs, expandedNodes, toggleExpansion])
+  }, [visibleNodes, visibleEdges, computedRingsState, ringConfigs, expandedNodes, toggleExpansion, nodeSizeMultipliers])
 
   // Load data when config changes
   useEffect(() => {
@@ -625,6 +727,7 @@ function App() {
         </div>
       )}
 
+      {/* Domain Legend - Top right */}
       {Object.keys(domainCounts).length > 0 && (
         <div style={{ position: 'absolute', top: 70, right: 10, background: 'white', padding: 12, borderRadius: 4, boxShadow: '0 2px 4px rgba(0,0,0,0.1)' }}>
           <div style={{ fontWeight: 'bold', marginBottom: 8, fontSize: 13 }}>Domains</div>
@@ -637,6 +740,15 @@ function App() {
           ))}
         </div>
       )}
+
+      {/* Layout Controls - Below domain legend */}
+      <LayoutControls
+        ringGap={ringGap}
+        onRingGapChange={setRingGap}
+        nodeSizeMultipliers={nodeSizeMultipliers}
+        onNodeSizeMultiplierChange={handleNodeSizeMultiplierChange}
+        ringLabels={RING_LABELS}
+      />
 
       <svg ref={svgRef} style={{ width: '100%', height: '100%' }} />
 
@@ -655,6 +767,11 @@ function App() {
             {hoveredNode.semanticPath.domain && (
               <span style={{ padding: '2px 8px', borderRadius: 4, backgroundColor: DOMAIN_COLORS[hoveredNode.semanticPath.domain] || '#9E9E9E', color: 'white', fontSize: 11, fontWeight: 'bold' }}>
                 {hoveredNode.semanticPath.domain}
+              </span>
+            )}
+            {hoveredNode.importance > 0 && (
+              <span style={{ padding: '2px 8px', borderRadius: 4, backgroundColor: '#4CAF50', color: 'white', fontSize: 11 }}>
+                Importance: {(hoveredNode.importance * 100).toFixed(1)}%
               </span>
             )}
             {hoveredNode.hasChildren && (

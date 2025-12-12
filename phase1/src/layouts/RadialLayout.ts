@@ -23,6 +23,7 @@ export interface LayoutConfig {
   totalAngle: number   // Total angle to distribute nodes (default: 2*PI)
   minRingGap: number   // Minimum gap between consecutive rings (default: 50)
   scalePaddingWithNodeSize?: boolean  // If true, padding scales proportionally with node size (default: true)
+  useFixedRadii?: boolean  // If true, use exact radii from config instead of auto-computing (default: false)
 }
 
 /**
@@ -191,6 +192,8 @@ function buildSubtreeInfo(
  * The key insight: nodes aren't evenly distributed - they cluster under ancestors.
  * Each subtree needs contiguous angular space, and the constraining layer may differ per subtree.
  * We compute radii such that the sum of MAX(angular extent per layer) for all subtrees = 2π.
+ *
+ * If config.useFixedRadii is true, uses exact radii from config without auto-adjustment.
  */
 function computeOptimalRingRadii(
   nodes: RawNodeV21[],
@@ -203,6 +206,23 @@ function computeOptimalRingRadii(
   const nodeCountByLayer = new Map<number, number>()
   for (const node of nodes) {
     nodeCountByLayer.set(node.layer, (nodeCountByLayer.get(node.layer) || 0) + 1)
+  }
+
+  // If useFixedRadii is true, skip auto-computation and use exact radii from config
+  if (config.useFixedRadii) {
+    return config.rings.map((ringConfig, layer) => {
+      const nodeCount = nodeCountByLayer.get(layer) || 0
+      const requiredRadius = computeRequiredRadiusForEvenDistribution(
+        nodeCount, ringConfig.nodeSize, config.nodePadding, scalePadding
+      )
+      return {
+        radius: ringConfig.radius,
+        nodeSize: ringConfig.nodeSize,
+        label: ringConfig.label,
+        nodeCount,
+        requiredRadius
+      }
+    })
   }
 
   // Build subtree info to understand hierarchical structure
@@ -571,12 +591,35 @@ export function computeRadialLayout(
 }
 
 /**
+ * Per-ring size ranges for importance-based node sizing.
+ * Must match the values in App.tsx getSize() function.
+ */
+const SIZE_RANGES: Record<number, { min: number; max: number }> = {
+  0: { min: 12, max: 12 },   // Root - fixed size
+  1: { min: 3, max: 18 },    // Outcomes - wide range to show SHAP differences
+  2: { min: 2, max: 14 },    // Coarse Domains
+  3: { min: 2, max: 12 },    // Fine Domains
+  4: { min: 1.5, max: 10 },  // Indicator Groups
+  5: { min: 1, max: 8 },     // Indicators
+}
+
+/**
+ * Computes actual node size based on importance.
+ * Uses area-proportional sizing: radius = min + (max - min) * sqrt(importance)
+ * Must match the getSize() function in App.tsx.
+ */
+function getActualNodeSize(node: LayoutNode): number {
+  const range = SIZE_RANGES[node.ring] || { min: 2, max: 8 }
+  const importance = node.rawNode.importance ?? 0
+  return range.min + (range.max - range.min) * Math.sqrt(importance)
+}
+
+/**
  * Validates that no nodes visually overlap within each ring.
  *
- * IMPORTANT: This checks for actual visual overlap (circles touching/intersecting),
- * NOT whether nodes have the desired padding between them. The padding parameter
- * is used by the layout algorithm to create spacing, but "overlap" means the
- * node circles actually intersect.
+ * IMPORTANT: This checks for actual visual overlap (circles touching/intersecting)
+ * using the actual importance-based node sizes from App.tsx getSize() function.
+ * NOT the fixed nodeSize from ring config.
  *
  * A small tolerance (0.5px) is applied to account for floating point precision
  * and the difference between arc-based layout calculations and Euclidean detection.
@@ -585,7 +628,7 @@ export function computeRadialLayout(
  */
 export function detectOverlaps(
   layoutNodes: LayoutNode[],
-  computedRings: ComputedRingConfig[],
+  _computedRings: ComputedRingConfig[],
   _nodePadding: number // Kept for API compatibility but not used in overlap detection
 ): Array<{ node1: string; node2: string; ring: number; distance: number; minDistance: number }> {
   const overlaps: Array<{ node1: string; node2: string; ring: number; distance: number; minDistance: number }> = []
@@ -604,15 +647,18 @@ export function detectOverlaps(
 
   // Check each ring for actual visual overlaps
   for (const [ring, ringNodes] of nodesByRing) {
-    const ringConfig = computedRings[ring] || computedRings[computedRings.length - 1]
-    // Actual overlap = circles touch when distance < sum of radii
-    // Apply tolerance to avoid false positives from floating point errors
-    const minDistance = ringConfig.nodeSize * 2 - OVERLAP_TOLERANCE
-
     for (let i = 0; i < ringNodes.length; i++) {
       for (let j = i + 1; j < ringNodes.length; j++) {
         const n1 = ringNodes[i]
         const n2 = ringNodes[j]
+
+        // Get actual sizes based on importance (not fixed ring config size)
+        const size1 = getActualNodeSize(n1)
+        const size2 = getActualNodeSize(n2)
+
+        // Actual overlap = circles touch when distance < sum of radii
+        // Apply tolerance to avoid false positives from floating point errors
+        const minDistance = size1 + size2 - OVERLAP_TOLERANCE
 
         // Compute Euclidean distance
         const dx = n1.x - n2.x
