@@ -14,7 +14,6 @@ import {
   type LayoutConfig,
   type LayoutNode
 } from './layouts/RadialLayout'
-import LayoutControls from './components/LayoutControls'
 
 /**
  * Semantic hierarchy visualization with concentric rings - v2.1 only
@@ -39,6 +38,9 @@ const RING_LABELS = [
 
 // Default ring gap (uniform spacing between rings)
 const DEFAULT_RING_GAP = 150
+
+// Node size multipliers per ring (tuned for fully expanded view)
+const NODE_SIZE_MULTIPLIERS = [1.0, 1.5, 2.4, 1.4, 0.8, 0.7]
 
 // Base node size ranges per ring (before multiplier)
 const BASE_SIZE_RANGES: Array<{ min: number; max: number }> = [
@@ -153,25 +155,13 @@ function App() {
   const [hoveredNode, setHoveredNode] = useState<ExpandableNode | null>(null)
   const [ringStats, setRingStats] = useState<Array<{ label: string; count: number; minDistance: number }>>([])
 
-  // Layout configuration state
-  const [ringGap, setRingGap] = useState(DEFAULT_RING_GAP)
-  const [nodeSizeMultipliers, setNodeSizeMultipliers] = useState<number[]>([1.0, 1.5, 2.4, 1.4, 0.8, 0.7])
-  const [nodePadding] = useState(DEFAULT_NODE_PADDING)
-
-  // Compute ring configs from gap and multipliers
+  // Layout configuration - fixed values for fully expanded view
+  const nodePadding = DEFAULT_NODE_PADDING
+  const nodeSizeMultipliers = NODE_SIZE_MULTIPLIERS
   const ringConfigs = useMemo(
-    () => generateRingConfigs(ringGap, nodeSizeMultipliers),
-    [ringGap, nodeSizeMultipliers]
+    () => generateRingConfigs(DEFAULT_RING_GAP, nodeSizeMultipliers),
+    [nodeSizeMultipliers]
   )
-
-  // Handler for changing a single ring's size multiplier
-  const handleNodeSizeMultiplierChange = useCallback((ring: number, multiplier: number) => {
-    setNodeSizeMultipliers(prev => {
-      const next = [...prev]
-      next[ring] = multiplier
-      return next
-    })
-  }, [])
 
   // Expansion state - tracks which nodes have their children visible
   const [expandedNodes, setExpandedNodes] = useState<Set<string>>(new Set())
@@ -742,14 +732,6 @@ function App() {
         </div>
       )}
 
-      {/* Layout Controls - Below domain legend */}
-      <LayoutControls
-        ringGap={ringGap}
-        onRingGapChange={setRingGap}
-        nodeSizeMultipliers={nodeSizeMultipliers}
-        onNodeSizeMultiplierChange={handleNodeSizeMultiplierChange}
-        ringLabels={RING_LABELS}
-      />
 
       <svg ref={svgRef} style={{ width: '100%', height: '100%' }} />
 
