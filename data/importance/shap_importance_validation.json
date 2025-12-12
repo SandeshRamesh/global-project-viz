@@ -1,0 +1,73 @@
+{
+  "summary": {
+    "total_nodes": 2583,
+    "nodes_with_importance": 2197,
+    "coverage_percentage": 85.1
+  },
+  "outcome_importance": {
+    "Infrastructure & Access": {
+      "raw_shap": 1.8841224817727007,
+      "normalized": 0.5131403731538222,
+      "floor_adjusted": false,
+      "rank": 1
+    },
+    "Environment & Sustainability": {
+      "raw_shap": 0.4604033120590045,
+      "normalized": 0.12539074802023112,
+      "floor_adjusted": false,
+      "rank": 2
+    },
+    "Education & Knowledge": {
+      "raw_shap": 0.38354517977003205,
+      "normalized": 0.10445845138654176,
+      "floor_adjusted": false,
+      "rank": 3
+    },
+    "Income & Living Standards": {
+      "raw_shap": 0.30804332628259756,
+      "normalized": 0.08389553700748534,
+      "floor_adjusted": false,
+      "rank": 4
+    },
+    "Employment & Work": {
+      "raw_shap": 0.2856242590178196,
+      "normalized": 0.07778970861612461,
+      "floor_adjusted": false,
+      "rank": 5
+    },
+    "Governance & Democracy": {
+      "raw_shap": 0.2462935482970034,
+      "normalized": 0.06707799758304145,
+      "floor_adjusted": false,
+      "rank": 6
+    },
+    "Equality & Fairness": {
+      "raw_shap": 0.0631288019734582,
+      "normalized": 0.017193116325927942,
+      "floor_adjusted": false,
+      "rank": 7
+    },
+    "Health & Longevity": {
+      "raw_shap": 0.030422662135099636,
+      "normalized": 0.008285605819877372,
+      "floor_adjusted": false,
+      "rank": 8
+    },
+    "Safety & Security": {
+      "raw_shap": 0.010165096980959402,
+      "normalized": 0.002768462086948108,
+      "floor_adjusted": false,
+      "rank": 9
+    }
+  },
+  "distribution": {
+    "min": 0.0,
+    "max": 1.0,
+    "mean": 0.002323,
+    "median": 2.2e-05,
+    "p25": 0.0,
+    "p75": 0.000293,
+    "p95": 0.007146
+  },
+  "warnings": []
+}
