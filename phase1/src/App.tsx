@@ -467,7 +467,7 @@ function App() {
 
     // Zoom - preserve transform across re-renders
     const zoom = d3.zoom<SVGSVGElement, unknown>()
-      .scaleExtent([0.05, 4])
+      .scaleExtent([0.05, 20])
       .on('zoom', (event) => {
         g.attr('transform', event.transform)
         currentTransformRef.current = event.transform
