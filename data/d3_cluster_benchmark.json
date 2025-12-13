@@ -1,0 +1,46 @@
+{
+  "timestamp": "2025-12-13T20:56:15.654Z",
+  "small_graph": {
+    "node_count": 10,
+    "iterations": 100,
+    "avg_time_ms": 0.02,
+    "min_time_ms": 0.01,
+    "max_time_ms": 0.25,
+    "std_dev_ms": 0.03,
+    "separation_calls": 5
+  },
+  "medium_graph": {
+    "node_count": 50,
+    "iterations": 100,
+    "avg_time_ms": 0.04,
+    "min_time_ms": 0.01,
+    "max_time_ms": 1.55,
+    "std_dev_ms": 0.15,
+    "separation_calls": 31
+  },
+  "large_graph": {
+    "node_count": 2583,
+    "iterations": 100,
+    "avg_time_ms": 0.33,
+    "min_time_ms": 0.26,
+    "max_time_ms": 1.21,
+    "std_dev_ms": 0.15,
+    "separation_calls": 1952
+  },
+  "naive_baseline": {
+    "node_count": 2583,
+    "iterations": 100,
+    "avg_time_ms": 0.11,
+    "min_time_ms": 0.07,
+    "max_time_ms": 0.41,
+    "std_dev_ms": 0.06,
+    "separation_calls": 0
+  },
+  "performance_comparison": {
+    "d3_vs_naive_ratio": 3,
+    "acceptable": true
+  },
+  "passes_performance_targets": true,
+  "recommendation": "Use D3 cluster",
+  "reasoning": "All performance targets met. Small: 0.02ms < 10ms ✅, Medium: 0.04ms < 50ms ✅, Large: 0.33ms < 200ms ✅. D3 cluster is 3.0× slower than naive but acceptable."
+}
