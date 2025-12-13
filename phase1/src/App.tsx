@@ -1,6 +1,7 @@
 import { useEffect, useRef, useState, useCallback, useMemo } from 'react'
 import * as d3 from 'd3'
 import './styles/App.css'
+import LayoutControls from './components/LayoutControls'
 import type {
   RawNodeV21,
   GraphDataV21,
@@ -11,6 +12,7 @@ import {
   computeRadialLayout,
   detectOverlaps,
   computeLayoutStats,
+  resolveOverlaps,
   type LayoutConfig,
   type LayoutNode
 } from './layouts/RadialLayout'
@@ -23,7 +25,8 @@ import {
  * - Click to expand/collapse node children
  * - Hover to see node details
  * - Starts with only root visible, expand to explore hierarchy
- * - Adjustable ring gap and node sizes via sliders
+ * - Adjustable ring radii via sliders
+ * - Node sizes represent SHAP importance directly (area ∝ importance)
  */
 
 // Ring labels
@@ -36,29 +39,28 @@ const RING_LABELS = [
   'Indicators'
 ]
 
-// Default ring gap (uniform spacing between rings)
-const DEFAULT_RING_GAP = 150
+// Default ring radii (individual positions for each ring)
+const DEFAULT_RING_RADII = [0, 150, 300, 450, 600, 750]
 
-// Node size multipliers per ring (tuned for fully expanded view)
-const NODE_SIZE_MULTIPLIERS = [1.0, 1.5, 2.4, 1.4, 0.8, 0.7]
-
-// Base node size ranges per ring (before multiplier)
-const BASE_SIZE_RANGES: Array<{ min: number; max: number }> = [
+// Node size ranges per ring - NO multipliers, sizes based purely on SHAP importance
+// These define the min/max radius for nodes at each ring level
+// Area is proportional to importance: radius = min + (max - min) * sqrt(importance)
+const NODE_SIZE_RANGES: Array<{ min: number; max: number }> = [
   { min: 12, max: 12 },   // Ring 0: Root - fixed size
-  { min: 3, max: 18 },    // Ring 1: Outcomes
-  { min: 2, max: 14 },    // Ring 2: Coarse Domains
+  { min: 4, max: 20 },    // Ring 1: Outcomes
+  { min: 3, max: 16 },    // Ring 2: Coarse Domains
   { min: 2, max: 12 },    // Ring 3: Fine Domains
-  { min: 1.5, max: 10 },  // Ring 4: Indicator Groups
-  { min: 1, max: 8 },     // Ring 5: Indicators
+  { min: 1.5, max: 8 },   // Ring 4: Indicator Groups
+  { min: 1, max: 6 },     // Ring 5: Indicators
 ]
 
 /**
- * Generate ring configs with equal spacing
+ * Generate ring configs from individual radii
  */
-function generateRingConfigs(gap: number, sizeMultipliers: number[]) {
+function generateRingConfigs(radii: number[]) {
   return RING_LABELS.map((label, i) => ({
-    radius: i * gap,  // Equal spacing: ring N is at N * gap
-    nodeSize: BASE_SIZE_RANGES[i].max * (sizeMultipliers[i] || 1),
+    radius: radii[i] || i * 150,
+    nodeSize: NODE_SIZE_RANGES[i].max,  // Use max for layout spacing calculations
     label
   }))
 }
@@ -113,8 +115,8 @@ function toExpandableNode(layoutNode: LayoutNode): ExpandableNode {
     x: layoutNode.x,
     y: layoutNode.y,
     parentId: layoutNode.parent?.id || null,
-    childIds: layoutNode.children.map(c => c.id),
-    hasChildren: layoutNode.children.length > 0
+    childIds: (raw.children || []).map(c => String(c)),  // Use raw data for all children
+    hasChildren: (raw.children?.length || 0) > 0  // Use raw data to check if expandable
   }
 }
 
@@ -155,16 +157,29 @@ function App() {
   const [hoveredNode, setHoveredNode] = useState<ExpandableNode | null>(null)
   const [ringStats, setRingStats] = useState<Array<{ label: string; count: number; minDistance: number }>>([])
 
-  // Layout configuration - fixed values for fully expanded view
+  // Layout configuration
   const nodePadding = DEFAULT_NODE_PADDING
-  const nodeSizeMultipliers = NODE_SIZE_MULTIPLIERS
+  const [ringRadii, setRingRadii] = useState<number[]>(DEFAULT_RING_RADII)
+
+  // Handler for individual ring radius changes
+  const handleRingRadiusChange = useCallback((ring: number, radius: number) => {
+    setRingRadii(prev => {
+      const next = [...prev]
+      next[ring] = radius
+      return next
+    })
+  }, [])
+
   const ringConfigs = useMemo(
-    () => generateRingConfigs(DEFAULT_RING_GAP, nodeSizeMultipliers),
-    [nodeSizeMultipliers]
+    () => generateRingConfigs(ringRadii),
+    [ringRadii]
   )
 
   // Expansion state - tracks which nodes have their children visible
   const [expandedNodes, setExpandedNodes] = useState<Set<string>>(new Set())
+
+  // Raw data (fetched once, cached)
+  const [rawData, setRawData] = useState<GraphDataV21 | null>(null)
 
   // All nodes from layout (stored for filtering)
   const [allNodes, setAllNodes] = useState<ExpandableNode[]>([])
@@ -173,19 +188,23 @@ function App() {
 
   // Toggle expansion of a node
   const toggleExpansion = useCallback((nodeId: string) => {
+    if (!rawData) return
+    const nodeById = new Map(rawData.nodes.map(n => [String(n.id), n]))
+
     setExpandedNodes(prev => {
       const next = new Set(prev)
       if (next.has(nodeId)) {
         // Collapse: remove this node and all descendants from expanded set
         next.delete(nodeId)
-        // Also collapse all descendants
+        // Also collapse all descendants (use rawData for full tree)
         const collapseDescendants = (id: string) => {
-          const node = allNodes.find(n => n.id === id)
-          if (node) {
-            node.childIds.forEach(childId => {
-              next.delete(childId)
-              collapseDescendants(childId)
-            })
+          const node = nodeById.get(id)
+          if (node?.children) {
+            for (const childId of node.children) {
+              const childIdStr = String(childId)
+              next.delete(childIdStr)
+              collapseDescendants(childIdStr)
+            }
           }
         }
         collapseDescendants(nodeId)
@@ -194,13 +213,17 @@ function App() {
       }
       return next
     })
-  }, [allNodes])
+  }, [rawData])
 
   // Expand all nodes
   const expandAll = useCallback(() => {
-    const allExpandable = allNodes.filter(n => n.hasChildren).map(n => n.id)
+    if (!rawData) return
+    // Use rawData to get ALL nodes (not just visible ones)
+    const allExpandable = rawData.nodes
+      .filter(n => n.children && n.children.length > 0)
+      .map(n => String(n.id))
     setExpandedNodes(new Set(allExpandable))
-  }, [allNodes])
+  }, [rawData])
 
   // Collapse all nodes
   const collapseAll = useCallback(() => {
@@ -226,28 +249,33 @@ function App() {
 
   // Collapse all nodes in a specific ring
   const collapseRing = useCallback((ring: number) => {
+    if (!rawData) return
+    const nodeById = new Map(rawData.nodes.map(n => [String(n.id), n]))
+
     setExpandedNodes(prev => {
       const next = new Set(prev)
-      // Remove all nodes in this ring and their descendants
-      allNodes
-        .filter(n => n.ring === ring)
+      // Remove all nodes in this ring and their descendants (use rawData for full tree)
+      rawData.nodes
+        .filter(n => n.layer === ring)
         .forEach(n => {
-          next.delete(n.id)
+          const nodeId = String(n.id)
+          next.delete(nodeId)
           // Also collapse descendants
           const collapseDescendants = (id: string) => {
-            const node = allNodes.find(nd => nd.id === id)
-            if (node) {
-              node.childIds.forEach(childId => {
-                next.delete(childId)
-                collapseDescendants(childId)
-              })
+            const node = nodeById.get(id)
+            if (node?.children) {
+              for (const childId of node.children) {
+                const childIdStr = String(childId)
+                next.delete(childIdStr)
+                collapseDescendants(childIdStr)
+              }
             }
           }
-          collapseDescendants(n.id)
+          collapseDescendants(nodeId)
         })
       return next
     })
-  }, [allNodes])
+  }, [rawData])
 
   // Compute visible nodes based on expansion state
   const visibleNodes = useMemo(() => {
@@ -285,8 +313,8 @@ function App() {
     return allEdges.filter(e => visibleIds.has(e.sourceId) && visibleIds.has(e.targetId))
   }, [allEdges, visibleNodes])
 
-  // Load data and compute layout (separate from rendering)
-  const loadData = useCallback(async () => {
+  // Fetch data once on mount
+  const fetchData = useCallback(async () => {
     setLoading(true)
     setError(null)
 
@@ -294,56 +322,7 @@ function App() {
       const response = await fetch(DATA_FILE)
       if (!response.ok) throw new Error(`Failed to load: ${response.status}`)
       const data: GraphDataV21 = await response.json()
-
-      // Build layout config from current state
-      // useFixedRadii: true ensures sliders directly control ring positions
-      const layoutConfig: LayoutConfig = {
-        rings: ringConfigs,
-        nodePadding,
-        startAngle: -Math.PI / 2,
-        totalAngle: 2 * Math.PI,
-        minRingGap: MIN_RING_GAP,
-        useFixedRadii: true
-      }
-
-      // Compute layout using RadialLayout algorithm
-      const layoutResult = computeRadialLayout(data.nodes, layoutConfig)
-      const { computedRings } = layoutResult
-
-      // Log computed ring radii
-      console.log('Computed ring radii:', computedRings.map((r, i) =>
-        `Ring ${i}: ${r.radius.toFixed(0)}px (required: ${r.requiredRadius.toFixed(0)}px, nodes: ${r.nodeCount})`
-      ))
-
-      // Detect any overlaps
-      const overlaps = detectOverlaps(layoutResult.nodes, computedRings, nodePadding)
-      if (overlaps.length > 0) {
-        console.warn(`Found ${overlaps.length} overlapping node pairs:`, overlaps.slice(0, 10))
-      }
-
-      // Compute layout statistics
-      const layoutStats = computeLayoutStats(layoutResult.nodes, computedRings, nodePadding)
-
-      // Convert to ExpandableNodes
-      const expandableNodes: ExpandableNode[] = layoutResult.nodes.map(toExpandableNode)
-
-      // Build structural edges
-      const structuralEdges: StructuralEdge[] = []
-      for (const layoutNode of layoutResult.nodes) {
-        if (layoutNode.parent) {
-          structuralEdges.push({
-            sourceId: layoutNode.parent.id,
-            targetId: layoutNode.id,
-            sourceRing: layoutNode.parent.ring,
-            targetRing: layoutNode.ring
-          })
-        }
-      }
-
-      // Store data for rendering
-      setAllNodes(expandableNodes)
-      setAllEdges(structuralEdges)
-      setComputedRingsState(computedRings)
+      setRawData(data)
 
       // Count domains for legend (from indicators, layer 5)
       const counts: Record<string, number> = {}
@@ -354,32 +333,120 @@ function App() {
       })
       setDomainCounts(counts)
 
-      // Compute ring stats
-      const computedRingStats = ringConfigs.map((ring, i) => ({
-        label: ring.label,
-        count: layoutStats.nodesPerRing.get(i) || 0,
-        minDistance: layoutStats.minDistancePerRing.get(i) || 0
-      }))
-      setRingStats(computedRingStats)
-
-      // Compute outcome count
-      const outcomeCount = expandableNodes.filter(n => n.isOutcome).length
-      const driverCount = expandableNodes.filter(n => n.isDriver).length
-
-      setStats({
-        nodes: expandableNodes.length,
-        structuralEdges: structuralEdges.length,
-        outcomes: outcomeCount,
-        drivers: driverCount,
-        overlaps: overlaps.length
-      })
-
       setLoading(false)
     } catch (err) {
       setError(err instanceof Error ? err.message : 'Failed to load')
       setLoading(false)
     }
-  }, [ringConfigs, nodePadding])
+  }, [])
+
+  // Compute layout whenever ringRadii or expansion state changes
+  // Layout is computed on VISIBLE nodes only, so nodes spread when siblings are collapsed
+  const computeLayout = useCallback(() => {
+    if (!rawData) return
+
+    // Determine which nodes are visible based on expansion state
+    const visibleNodeIds = new Set<string>()
+    const nodeById = new Map(rawData.nodes.map(n => [String(n.id), n]))
+
+    // Root is always visible
+    const rootNode = rawData.nodes.find(n => n.layer === 0)
+    if (rootNode) {
+      visibleNodeIds.add(String(rootNode.id))
+
+      // Recursively add visible children
+      const addVisibleChildren = (nodeId: string) => {
+        if (expandedNodes.has(nodeId)) {
+          const node = nodeById.get(nodeId)
+          if (node?.children) {
+            for (const childId of node.children) {
+              const childIdStr = String(childId)
+              visibleNodeIds.add(childIdStr)
+              addVisibleChildren(childIdStr)
+            }
+          }
+        }
+      }
+      addVisibleChildren(String(rootNode.id))
+    }
+
+    // Filter to visible nodes only
+    const visibleRawNodes = rawData.nodes.filter(n => visibleNodeIds.has(String(n.id)))
+
+    // Build layout config from current state
+    // useFixedRadii: true ensures sliders directly control ring positions
+    const layoutConfig: LayoutConfig = {
+      rings: ringConfigs,
+      nodePadding,
+      startAngle: -Math.PI / 2,
+      totalAngle: 2 * Math.PI,
+      minRingGap: MIN_RING_GAP,
+      useFixedRadii: true
+    }
+
+    // Compute layout using ring-independent angular positioning algorithm
+    // Each ring positions independently - children spread to fill available space
+    const layoutResult = computeRadialLayout(visibleRawNodes, layoutConfig)
+    const { computedRings } = layoutResult
+
+    // Log computed ring radii
+    console.log('Computed ring radii:', computedRings.map((r, i) =>
+      `Ring ${i}: ${r.radius.toFixed(0)}px (required: ${r.requiredRadius.toFixed(0)}px, nodes: ${r.nodeCount})`
+    ))
+
+    // Post-process: resolve any remaining overlaps by pushing nodes apart
+    resolveOverlaps(layoutResult.nodes, computedRings, nodePadding, 50)
+
+    // Detect any overlaps after resolution
+    const overlaps = detectOverlaps(layoutResult.nodes, computedRings, nodePadding)
+    if (overlaps.length > 0) {
+      console.warn(`Found ${overlaps.length} overlapping node pairs after resolution:`, overlaps.slice(0, 10))
+    }
+
+    // Compute layout statistics
+    const layoutStats = computeLayoutStats(layoutResult.nodes, computedRings, nodePadding)
+
+    // Convert to ExpandableNodes
+    const expandableNodes: ExpandableNode[] = layoutResult.nodes.map(toExpandableNode)
+
+    // Build structural edges
+    const structuralEdges: StructuralEdge[] = []
+    for (const layoutNode of layoutResult.nodes) {
+      if (layoutNode.parent) {
+        structuralEdges.push({
+          sourceId: layoutNode.parent.id,
+          targetId: layoutNode.id,
+          sourceRing: layoutNode.parent.ring,
+          targetRing: layoutNode.ring
+        })
+      }
+    }
+
+    // Store data for rendering
+    setAllNodes(expandableNodes)
+    setAllEdges(structuralEdges)
+    setComputedRingsState(computedRings)
+
+    // Compute ring stats
+    const computedRingStats = ringConfigs.map((ring, i) => ({
+      label: ring.label,
+      count: layoutStats.nodesPerRing.get(i) || 0,
+      minDistance: layoutStats.minDistancePerRing.get(i) || 0
+    }))
+    setRingStats(computedRingStats)
+
+    // Compute outcome count
+    const outcomeCount = expandableNodes.filter(n => n.isOutcome).length
+    const driverCount = expandableNodes.filter(n => n.isDriver).length
+
+    setStats({
+      nodes: expandableNodes.length,
+      structuralEdges: structuralEdges.length,
+      outcomes: outcomeCount,
+      drivers: driverCount,
+      overlaps: overlaps.length
+    })
+  }, [rawData, ringConfigs, nodePadding, expandedNodes])
 
   // Render visible nodes and edges (called when expansion state changes)
   const renderVisualization = useCallback(() => {
@@ -511,22 +578,18 @@ function App() {
     }
 
     /**
-     * Get node size based on SHAP importance and per-ring multiplier.
+     * Get node size based purely on SHAP importance.
      * Uses area-proportional sizing: radius = min + (max - min) * sqrt(importance)
-     * This ensures visual area is proportional to importance value.
+     * This ensures visual area (π*r²) is directly proportional to importance value.
+     * NO multipliers - node area represents importance truthfully.
      */
     const getSize = (n: ExpandableNode): number => {
-      const baseRange = BASE_SIZE_RANGES[n.ring] || { min: 2, max: 8 }
-      const multiplier = nodeSizeMultipliers[n.ring] || 1
+      const range = NODE_SIZE_RANGES[n.ring] || { min: 2, max: 8 }
       const importance = n.importance || 0
-
-      // Apply multiplier to both min and max
-      const min = baseRange.min * multiplier
-      const max = baseRange.max * multiplier
 
       // Area-proportional: radius scales with sqrt(importance)
       // so that visual area (π*r²) is proportional to importance
-      return min + (max - min) * Math.sqrt(importance)
+      return range.min + (range.max - range.min) * Math.sqrt(importance)
     }
 
     // Draw nodes
@@ -640,12 +703,17 @@ function App() {
           .text(d.label)
       })
 
-  }, [visibleNodes, visibleEdges, computedRingsState, ringConfigs, expandedNodes, toggleExpansion, nodeSizeMultipliers])
+  }, [visibleNodes, visibleEdges, computedRingsState, ringConfigs, expandedNodes, toggleExpansion])
 
-  // Load data when config changes
+  // Fetch data once on mount
   useEffect(() => {
-    loadData()
-  }, [loadData])
+    fetchData()
+  }, [fetchData])
+
+  // Recompute layout when rawData or ringRadii changes
+  useEffect(() => {
+    computeLayout()
+  }, [computeLayout])
 
   // Re-render when visible nodes change (expansion state changes)
   useEffect(() => {
@@ -732,6 +800,12 @@ function App() {
         </div>
       )}
 
+      {/* Layout Controls - Below domain legend */}
+      <LayoutControls
+        ringRadii={ringRadii}
+        onRingRadiusChange={handleRingRadiusChange}
+        ringLabels={RING_LABELS}
+      />
 
       <svg ref={svgRef} style={{ width: '100%', height: '100%' }} />
 

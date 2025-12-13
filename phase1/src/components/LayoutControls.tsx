@@ -1,28 +1,20 @@
 /**
- * LayoutControls - Right-side panel for adjusting layout parameters
- *
- * Controls:
- * - Ring gap: uniform spacing between all rings
- * - Per-ring node size multipliers
+ * LayoutControls - Compact panel for adjusting ring radii
  */
 
-import { memo } from 'react'
+import React, { memo } from 'react'
 
 interface LayoutControlsProps {
-  ringGap: number
-  onRingGapChange: (gap: number) => void
-  nodeSizeMultipliers: number[]
-  onNodeSizeMultiplierChange: (ring: number, multiplier: number) => void
+  ringRadii: number[]
+  onRingRadiusChange: (ring: number, radius: number) => void
   ringLabels: string[]
 }
 
-const RING_LABELS_SHORT = ['Root', 'Outcomes', 'Coarse', 'Fine', 'Groups', 'Indicators']
+const SHORT_LABELS = ['Root', 'Out', 'Coarse', 'Fine', 'Groups', 'Ind']
 
 function LayoutControls({
-  ringGap,
-  onRingGapChange,
-  nodeSizeMultipliers,
-  onNodeSizeMultiplierChange,
+  ringRadii,
+  onRingRadiusChange,
   ringLabels
 }: LayoutControlsProps) {
   return (
@@ -31,80 +23,61 @@ function LayoutControls({
       top: 320,
       right: 10,
       background: 'white',
-      padding: 12,
+      padding: 10,
       borderRadius: 4,
       boxShadow: '0 2px 4px rgba(0,0,0,0.1)',
-      width: 200,
-      fontSize: 12
+      fontSize: 11
     }}>
-      <div style={{ fontWeight: 'bold', marginBottom: 12, fontSize: 13 }}>Layout Controls</div>
+      <div style={{ fontWeight: 'bold', marginBottom: 8, fontSize: 12 }}>Ring Radii</div>
 
-      {/* Ring Gap Slider */}
-      <div style={{ marginBottom: 16 }}>
-        <div style={{ display: 'flex', justifyContent: 'space-between', marginBottom: 4 }}>
-          <span>Ring Gap</span>
-          <span style={{ color: '#666' }}>{ringGap}px</span>
-        </div>
-        <input
-          type="range"
-          min={50}
-          max={300}
-          step={10}
-          value={ringGap}
-          onChange={(e) => onRingGapChange(Number(e.target.value))}
-          style={{ width: '100%' }}
-        />
-      </div>
-
-      {/* Divider */}
-      <div style={{ borderTop: '1px solid #eee', marginBottom: 12 }} />
-
-      {/* Per-Ring Node Size Multipliers */}
-      <div style={{ fontWeight: 'bold', marginBottom: 8, fontSize: 11, color: '#666' }}>
-        Node Size Multipliers
-      </div>
-
-      {nodeSizeMultipliers.map((multiplier, ring) => (
-        <div key={ring} style={{ marginBottom: 8 }}>
-          <div style={{ display: 'flex', justifyContent: 'space-between', marginBottom: 2 }}>
-            <span style={{ fontSize: 11 }}>
-              {ring}: {ringLabels[ring] || RING_LABELS_SHORT[ring]}
+      {/* Compact grid of inputs */}
+      <div style={{ display: 'grid', gridTemplateColumns: 'auto 60px', gap: '4px 8px', alignItems: 'center' }}>
+        {ringRadii.map((radius, ring) => (
+          <React.Fragment key={ring}>
+            <span style={{ color: '#555', fontSize: 10 }} title={ringLabels[ring]}>
+              {ring}: {SHORT_LABELS[ring]}
             </span>
-            <span style={{ color: '#666', fontSize: 11 }}>{multiplier.toFixed(1)}x</span>
-          </div>
-          <input
-            type="range"
-            min={0.5}
-            max={3}
-            step={0.1}
-            value={multiplier}
-            onChange={(e) => onNodeSizeMultiplierChange(ring, Number(e.target.value))}
-            style={{ width: '100%' }}
-          />
-        </div>
-      ))}
+            <input
+              type="number"
+              min={ring === 0 ? 0 : 50}
+              step={10}
+              value={radius}
+              onChange={(e) => onRingRadiusChange(ring, Number(e.target.value) || 0)}
+              disabled={ring === 0}
+              style={{
+                width: '100%',
+                padding: '2px 4px',
+                fontSize: 10,
+                border: '1px solid #ccc',
+                borderRadius: 2,
+                textAlign: 'right',
+                background: ring === 0 ? '#f5f5f5' : 'white'
+              }}
+            />
+          </React.Fragment>
+        ))}
+      </div>
 
       {/* Reset Button */}
       <button
         onClick={() => {
-          onRingGapChange(150)
-          const defaults = [1.0, 1.5, 2.4, 1.4, 0.8, 0.7]
-          for (let i = 0; i < 6; i++) {
-            onNodeSizeMultiplierChange(i, defaults[i])
+          const defaults = [0, 150, 300, 450, 600, 750]
+          for (let i = 0; i < ringRadii.length; i++) {
+            onRingRadiusChange(i, defaults[i] || i * 150)
           }
         }}
         style={{
           width: '100%',
-          padding: '6px 12px',
+          padding: '4px 8px',
           marginTop: 8,
-          fontSize: 11,
+          fontSize: 10,
           cursor: 'pointer',
           border: '1px solid #ccc',
-          borderRadius: 3,
+          borderRadius: 2,
           background: '#f5f5f5'
         }}
       >
-        Reset to Defaults
+        Reset (150px gaps)
       </button>
     </div>
   )
