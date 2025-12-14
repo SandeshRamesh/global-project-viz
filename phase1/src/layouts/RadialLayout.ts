@@ -458,15 +458,19 @@ export function resolveOverlaps(
 }
 
 /**
- * Detect overlaps
+ * Detect overlaps - uses ARC distance (not Euclidean) since nodes are on a ring
+ * Only checks ADJACENT nodes since non-adjacent nodes can't overlap.
+ *
+ * Note: This detects TRUE overlaps (circles intersecting), not padding violations.
+ * Padding is for aesthetics during layout, not overlap detection.
  */
 export function detectOverlaps(
   layoutNodes: LayoutNode[],
-  _computedRings: ComputedRingConfig[],
-  nodePadding: number
+  computedRings: ComputedRingConfig[],
+  _nodePadding: number  // Unused - we only detect true overlaps, not padding violations
 ): Array<{ node1: string; node2: string; ring: number; distance: number; minDistance: number }> {
   const overlaps: Array<{ node1: string; node2: string; ring: number; distance: number; minDistance: number }> = []
-  const OVERLAP_TOLERANCE = 0.5
+  const OVERLAP_TOLERANCE = 1.0  // Allow 1px tolerance for floating-point precision
 
   const nodesByRing = new Map<number, LayoutNode[]>()
   for (const node of layoutNodes) {
@@ -477,28 +481,44 @@ export function detectOverlaps(
   }
 
   for (const [ring, ringNodes] of nodesByRing) {
+    if (ringNodes.length < 2) continue
+
+    const ringConfig = computedRings[ring]
+    if (!ringConfig || ringConfig.radius === 0) continue
+    const radius = ringConfig.radius
+
+    // Sort by angle so we only check adjacent pairs
+    ringNodes.sort((a, b) => a.angle - b.angle)
+
+    // Check each adjacent pair (including wrap-around from last to first)
     for (let i = 0; i < ringNodes.length; i++) {
-      for (let j = i + 1; j < ringNodes.length; j++) {
-        const n1 = ringNodes[i]
-        const n2 = ringNodes[j]
+      const n1 = ringNodes[i]
+      const n2 = ringNodes[(i + 1) % ringNodes.length]
 
-        const size1 = getActualNodeSize(n1.ring, n1.rawNode.importance ?? 0)
-        const size2 = getActualNodeSize(n2.ring, n2.rawNode.importance ?? 0)
-        const minDistance = size1 + size2 + nodePadding - OVERLAP_TOLERANCE
+      const size1 = getActualNodeSize(n1.ring, n1.rawNode.importance ?? 0)
+      const size2 = getActualNodeSize(n2.ring, n2.rawNode.importance ?? 0)
 
-        const dx = n1.x - n2.x
-        const dy = n1.y - n2.y
-        const distance = Math.sqrt(dx * dx + dy * dy)
+      // Minimum arc length for circles to NOT overlap = sum of radii
+      // (no padding - we're detecting actual intersection, not aesthetic spacing)
+      const minArcLength = size1 + size2 - OVERLAP_TOLERANCE
 
-        if (distance < minDistance) {
-          overlaps.push({
-            node1: n1.id,
-            node2: n2.id,
-            ring,
-            distance,
-            minDistance
-          })
-        }
+      // Calculate angular difference (handle wrap-around)
+      let angleDiff = Math.abs(n2.angle - n1.angle)
+      if (angleDiff > Math.PI) {
+        angleDiff = 2 * Math.PI - angleDiff
+      }
+
+      // Actual arc length between nodes
+      const arcLength = angleDiff * radius
+
+      if (arcLength < minArcLength) {
+        overlaps.push({
+          node1: n1.id,
+          node2: n2.id,
+          ring,
+          distance: arcLength,
+          minDistance: minArcLength
+        })
       }
     }
   }
