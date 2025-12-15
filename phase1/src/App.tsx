@@ -1,7 +1,6 @@
 import { useEffect, useRef, useState, useCallback, useMemo } from 'react'
 import * as d3 from 'd3'
 import './styles/App.css'
-import LayoutControls from './components/LayoutControls'
 import type {
   RawNodeV21,
   GraphDataV21,
@@ -16,6 +15,10 @@ import {
   type LayoutConfig,
   type LayoutNode
 } from './layouts/RadialLayout'
+import {
+  ViewportAwareLayout,
+  createViewportLayout
+} from './layouts/ViewportScales'
 
 /**
  * Semantic hierarchy visualization with concentric rings - v2.1 only
@@ -39,28 +42,20 @@ const RING_LABELS = [
   'Indicators'
 ]
 
-// Default ring radii (individual positions for each ring)
-const DEFAULT_RING_RADII = [0, 150, 300, 450, 600, 750]
+// Average character width as fraction of font size (for text width estimation)
+const AVG_CHAR_WIDTH_RATIO = 0.55
 
-// Node size ranges per ring - NO multipliers, sizes based purely on SHAP importance
-// These define the min/max radius for nodes at each ring level
-// Area is proportional to importance: radius = min + (max - min) * sqrt(importance)
-const NODE_SIZE_RANGES: Array<{ min: number; max: number }> = [
-  { min: 12, max: 12 },   // Ring 0: Root - fixed size
-  { min: 4, max: 20 },    // Ring 1: Outcomes
-  { min: 3, max: 16 },    // Ring 2: Coarse Domains
-  { min: 2, max: 12 },    // Ring 3: Fine Domains
-  { min: 1.5, max: 8 },   // Ring 4: Indicator Groups
-  { min: 1, max: 6 },     // Ring 5: Indicators
-]
+// Note: getAdaptiveSpacing, calculateDynamicRadii, getNodeRadius, isNodeFloored
+// are now provided by ViewportAwareLayout instance
 
 /**
  * Generate ring configs from individual radii
+ * nodeSize is a placeholder - actual sizing uses viewport-aware calculations
  */
-function generateRingConfigs(radii: number[]) {
+function generateRingConfigs(radii: number[], maxNodeRadius: number = 20) {
   return RING_LABELS.map((label, i) => ({
     radius: radii[i] || i * 150,
-    nodeSize: NODE_SIZE_RANGES[i].max,  // Use max for layout spacing calculations
+    nodeSize: maxNodeRadius,  // Placeholder, actual sizing is viewport-aware
     label
   }))
 }
@@ -88,8 +83,8 @@ const DOMAIN_COLORS: Record<string, string> = {
 // Use Vite's base URL for correct path in GitHub Pages
 const DATA_FILE = `${import.meta.env.BASE_URL}data/v2_1_visualization_final.json`
 
-const DEFAULT_NODE_PADDING = 7
-const MIN_RING_GAP = 80
+// Node padding for layout (used by RadialLayout, but actual spacing is adaptive)
+const DEFAULT_NODE_PADDING = 2  // Base padding, actual spacing is adaptive
 
 /**
  * Converts a LayoutNode to an ExpandableNode for rendering
@@ -144,6 +139,8 @@ function App() {
   const svgRef = useRef<SVGSVGElement>(null)
   const zoomRef = useRef<d3.ZoomBehavior<SVGSVGElement, unknown> | null>(null)
   const currentTransformRef = useRef<d3.ZoomTransform | null>(null)
+  const prevVisibleNodeIdsRef = useRef<Set<string>>(new Set())
+  const nodePositionsRef = useRef<Map<string, { x: number; y: number; parentId: string | null }>>(new Map())
   const [loading, setLoading] = useState(true)
   const [error, setError] = useState<string | null>(null)
   const [stats, setStats] = useState<{
@@ -156,19 +153,57 @@ function App() {
   const [domainCounts, setDomainCounts] = useState<Record<string, number>>({})
   const [hoveredNode, setHoveredNode] = useState<ExpandableNode | null>(null)
   const [ringStats, setRingStats] = useState<Array<{ label: string; count: number; minDistance: number }>>([])
+  const [fps, setFps] = useState<number>(0)
+
+  // Viewport-aware layout engine
+  const viewportLayoutRef = useRef<ViewportAwareLayout | null>(null)
+  const [layoutValues, setLayoutValues] = useState<ReturnType<ViewportAwareLayout['getLayoutValues']> | null>(null)
+
+  // Initialize viewport layout on mount
+  useEffect(() => {
+    const width = window.innerWidth
+    const height = window.innerHeight
+    const dpr = window.devicePixelRatio || 1
+
+    viewportLayoutRef.current = createViewportLayout(width, height, dpr, 1, 100)
+    viewportLayoutRef.current.logParameters()
+    setLayoutValues(viewportLayoutRef.current.getLayoutValues())
+  }, [])
+
+  // Handle window resize
+  useEffect(() => {
+    const handleResize = () => {
+      if (!viewportLayoutRef.current) return
+
+      const width = window.innerWidth
+      const height = window.innerHeight
+
+      viewportLayoutRef.current.updateContext({ width, height })
+      setLayoutValues(viewportLayoutRef.current.getLayoutValues())
+
+      console.log('[Viewport Resize] New dimensions:', width, 'x', height)
+      viewportLayoutRef.current.logParameters()
+    }
+
+    // Debounce resize handler
+    let resizeTimeout: ReturnType<typeof setTimeout>
+    const debouncedResize = () => {
+      clearTimeout(resizeTimeout)
+      resizeTimeout = setTimeout(handleResize, 300)
+    }
+
+    window.addEventListener('resize', debouncedResize)
+    return () => {
+      window.removeEventListener('resize', debouncedResize)
+      clearTimeout(resizeTimeout)
+    }
+  }, [])
 
   // Layout configuration
   const nodePadding = DEFAULT_NODE_PADDING
-  const [ringRadii, setRingRadii] = useState<number[]>(DEFAULT_RING_RADII)
-
-  // Handler for individual ring radius changes
-  const handleRingRadiusChange = useCallback((ring: number, radius: number) => {
-    setRingRadii(prev => {
-      const next = [...prev]
-      next[ring] = radius
-      return next
-    })
-  }, [])
+  // Ring radii are calculated dynamically based on visible nodes
+  // Initial values are placeholders that get replaced on first layout computation
+  const [ringRadii, setRingRadii] = useState<number[]>([0, 100, 180, 260, 340, 420])
 
   const ringConfigs = useMemo(
     () => generateRingConfigs(ringRadii),
@@ -177,6 +212,10 @@ function App() {
 
   // Expansion state - tracks which nodes have their children visible
   const [expandedNodes, setExpandedNodes] = useState<Set<string>>(new Set())
+
+  // Track last expansion action for auto-zoom
+  const pendingZoomRef = useRef<{ nodeId: string; action: 'expand' | 'collapse' } | null>(null)
+  const isAnimatingZoomRef = useRef(false)
 
   // Raw data (fetched once, cached)
   const [rawData, setRawData] = useState<GraphDataV21 | null>(null)
@@ -193,7 +232,9 @@ function App() {
 
     setExpandedNodes(prev => {
       const next = new Set(prev)
-      if (next.has(nodeId)) {
+      const wasExpanded = next.has(nodeId)
+
+      if (wasExpanded) {
         // Collapse: remove this node and all descendants from expanded set
         next.delete(nodeId)
         // Also collapse all descendants (use rawData for full tree)
@@ -208,8 +249,12 @@ function App() {
           }
         }
         collapseDescendants(nodeId)
+        // Record collapse for auto-zoom
+        pendingZoomRef.current = { nodeId, action: 'collapse' }
       } else {
         next.add(nodeId)
+        // Record expansion for auto-zoom
+        pendingZoomRef.current = { nodeId, action: 'expand' }
       }
       return next
     })
@@ -228,6 +273,66 @@ function App() {
   // Collapse all nodes
   const collapseAll = useCallback(() => {
     setExpandedNodes(new Set())
+  }, [])
+
+  // Reset view: collapse all and reset zoom to initial state
+  const resetView = useCallback(() => {
+    // Collapse all nodes
+    setExpandedNodes(new Set())
+    // Clear stored transform so next render calculates initial zoom
+    currentTransformRef.current = null
+    // If we have the zoom behavior and SVG, programmatically reset
+    if (zoomRef.current && svgRef.current) {
+      const svg = d3.select(svgRef.current)
+      const width = window.innerWidth
+      const height = window.innerHeight
+      // Reset to center with scale 1 (will be recalculated on next render)
+      const initialTransform = d3.zoomIdentity.translate(width / 2, height / 2).scale(1)
+      svg.transition().duration(300).call(zoomRef.current.transform, initialTransform)
+    }
+  }, [])
+
+  // Keyboard shortcuts for reset view (R or Home)
+  useEffect(() => {
+    const handleKeyDown = (e: KeyboardEvent) => {
+      // Ignore if user is typing in an input
+      if (e.target instanceof HTMLInputElement || e.target instanceof HTMLTextAreaElement) return
+
+      if (e.key === 'r' || e.key === 'R' || e.key === 'Home') {
+        e.preventDefault()
+        resetView()
+      }
+    }
+
+    window.addEventListener('keydown', handleKeyDown)
+    return () => window.removeEventListener('keydown', handleKeyDown)
+  }, [resetView])
+
+  // FPS counter (dev mode only)
+  useEffect(() => {
+    if (!import.meta.env.DEV) return
+
+    let frameCount = 0
+    let lastTime = performance.now()
+    let animationId: number
+
+    const measureFps = () => {
+      frameCount++
+      const currentTime = performance.now()
+      const elapsed = currentTime - lastTime
+
+      // Update FPS every 500ms
+      if (elapsed >= 500) {
+        setFps(Math.round((frameCount * 1000) / elapsed))
+        frameCount = 0
+        lastTime = currentTime
+      }
+
+      animationId = requestAnimationFrame(measureFps)
+    }
+
+    animationId = requestAnimationFrame(measureFps)
+    return () => cancelAnimationFrame(animationId)
   }, [])
 
   // Expand all nodes in a specific ring (that are currently visible)
@@ -340,10 +445,13 @@ function App() {
     }
   }, [])
 
-  // Compute layout whenever ringRadii or expansion state changes
+  // Compute layout whenever expansion state changes
   // Layout is computed on VISIBLE nodes only, so nodes spread when siblings are collapsed
+  // Ring radii are calculated DYNAMICALLY based on visible node count
   const computeLayout = useCallback(() => {
-    if (!rawData) return
+    if (!rawData || !viewportLayoutRef.current) return
+
+    const vLayout = viewportLayoutRef.current
 
     // Determine which nodes are visible based on expansion state
     const visibleNodeIds = new Set<string>()
@@ -373,26 +481,52 @@ function App() {
     // Filter to visible nodes only
     const visibleRawNodes = rawData.nodes.filter(n => visibleNodeIds.has(String(n.id)))
 
-    // Build layout config from current state
-    // useFixedRadii: true ensures sliders directly control ring positions
+    // Update viewport layout with current visible node count
+    vLayout.updateContext({ visibleNodes: visibleRawNodes.length })
+    const currentLayoutValues = vLayout.getLayoutValues()
+    setLayoutValues(currentLayoutValues)
+
+    // Group nodes by ring for radius calculation
+    const nodesByRing = new Map<number, Array<{ importance?: number }>>()
+    visibleRawNodes.forEach(n => {
+      if (!nodesByRing.has(n.layer)) nodesByRing.set(n.layer, [])
+      nodesByRing.get(n.layer)!.push({ importance: n.importance })
+    })
+
+    // Calculate DYNAMIC ring radii using viewport-aware layout
+    const dynamicRadii = vLayout.calculateRingRadii(nodesByRing, 6)
+
+    // Update ringRadii state so sliders reflect current values
+    setRingRadii(dynamicRadii)
+
+    // Generate ring configs from dynamic radii
+    const dynamicRingConfigs = generateRingConfigs(dynamicRadii)
+
+    // Build layout config with dynamic radii and viewport-aware sizing
     const layoutConfig: LayoutConfig = {
-      rings: ringConfigs,
+      rings: dynamicRingConfigs,
       nodePadding,
       startAngle: -Math.PI / 2,
       totalAngle: 2 * Math.PI,
-      minRingGap: MIN_RING_GAP,
-      useFixedRadii: true
+      minRingGap: currentLayoutValues.ringGap,
+      useFixedRadii: true,
+      // Pass viewport-aware sizing parameters
+      sizeRange: currentLayoutValues.sizeRange,
+      baseSpacing: currentLayoutValues.baseSpacing,
+      spacingScaleFactor: 0.3,  // Scale factor remains constant
+      maxSpacing: currentLayoutValues.maxSpacing
     }
 
     // Compute layout using ring-independent angular positioning algorithm
     // Each ring positions independently - children spread to fill available space
-    const layoutResult = computeRadialLayout(visibleRawNodes, layoutConfig)
+    // Pass expandedNodes for smart lateral-first sector filling of outcomes
+    const layoutResult = computeRadialLayout(visibleRawNodes, layoutConfig, expandedNodes)
     const { computedRings } = layoutResult
 
     // Log computed ring radii
-    console.log('Computed ring radii:', computedRings.map((r, i) =>
-      `Ring ${i}: ${r.radius.toFixed(0)}px (required: ${r.requiredRadius.toFixed(0)}px, nodes: ${r.nodeCount})`
-    ))
+    console.log('Dynamic ring radii:', dynamicRadii.map((r, i) =>
+      `Ring ${i}: ${r.toFixed(0)}px`
+    ).join(', '))
 
     // Post-process: resolve any remaining overlaps by pushing nodes apart
     resolveOverlaps(layoutResult.nodes, computedRings, nodePadding, 50)
@@ -427,8 +561,8 @@ function App() {
     setAllEdges(structuralEdges)
     setComputedRingsState(computedRings)
 
-    // Compute ring stats
-    const computedRingStats = ringConfigs.map((ring, i) => ({
+    // Compute ring stats using dynamicRingConfigs
+    const computedRingStats = dynamicRingConfigs.map((ring, i) => ({
       label: ring.label,
       count: layoutStats.nodesPerRing.get(i) || 0,
       minDistance: layoutStats.minDistancePerRing.get(i) || 0
@@ -446,73 +580,142 @@ function App() {
       drivers: driverCount,
       overlaps: overlaps.length
     })
-  }, [rawData, ringConfigs, nodePadding, expandedNodes])
+  }, [rawData, nodePadding, expandedNodes])  // Removed ringConfigs - now calculated inside
 
   // Render visible nodes and edges (called when expansion state changes)
   const renderVisualization = useCallback(() => {
-    if (!svgRef.current || visibleNodes.length === 0) return
+    if (!svgRef.current || visibleNodes.length === 0 || !viewportLayoutRef.current || !layoutValues) return
 
+    const vLayout = viewportLayoutRef.current
     const svg = d3.select(svgRef.current)
-    svg.selectAll('*').remove()
+
+    // Detect exiting nodes for collapse animation
+    const currentVisibleIds = new Set(visibleNodes.map(n => n.id))
+    const exitingNodeIds = new Set<string>()
+    prevVisibleNodeIdsRef.current.forEach(id => {
+      if (!currentVisibleIds.has(id)) exitingNodeIds.add(id)
+    })
+
+    // If there are exiting nodes, animate them out before clearing
+    if (exitingNodeIds.size > 0) {
+      const exitingNodes = svg.selectAll('circle.node')
+        .filter(function() {
+          const id = d3.select(this).attr('data-id')
+          return id ? exitingNodeIds.has(id) : false
+        })
+
+      // Animate exiting nodes toward parent position while shrinking
+      exitingNodes
+        .transition()
+        .duration(200)
+        .ease(d3.easeCubicIn)
+        .attr('cx', function() {
+          const id = d3.select(this).attr('data-id')
+          if (id) {
+            const nodeData = nodePositionsRef.current.get(id)
+            if (nodeData?.parentId) {
+              const parentData = nodePositionsRef.current.get(nodeData.parentId)
+              if (parentData) return parentData.x
+            }
+          }
+          return d3.select(this).attr('cx')  // Fallback to current position
+        })
+        .attr('cy', function() {
+          const id = d3.select(this).attr('data-id')
+          if (id) {
+            const nodeData = nodePositionsRef.current.get(id)
+            if (nodeData?.parentId) {
+              const parentData = nodePositionsRef.current.get(nodeData.parentId)
+              if (parentData) return parentData.y
+            }
+          }
+          return d3.select(this).attr('cy')
+        })
+        .attr('r', 0)
+        .style('opacity', 0)
+
+      // Animate exiting edges
+      svg.selectAll('line')
+        .filter(function() {
+          const line = d3.select(this)
+          const x2 = parseFloat(line.attr('x2'))
+          const y2 = parseFloat(line.attr('y2'))
+          // Check if target position matches an exiting node
+          for (const id of exitingNodeIds) {
+            const pos = nodePositionsRef.current.get(id)
+            if (pos && Math.abs(pos.x - x2) < 1 && Math.abs(pos.y - y2) < 1) {
+              return true
+            }
+          }
+          return false
+        })
+        .transition()
+        .duration(200)
+        .ease(d3.easeCubicIn)
+        .attr('x2', function() { return d3.select(this).attr('x1') })
+        .attr('y2', function() { return d3.select(this).attr('y1') })
+        .style('opacity', 0)
+
+      // Animate exiting labels
+      svg.selectAll('text.node-label')
+        .filter(function() {
+          const id = d3.select(this).attr('data-id')
+          return id ? exitingNodeIds.has(id) : false
+        })
+        .transition()
+        .duration(150)
+        .style('opacity', 0)
+    }
+
+    // Clear after short delay if animating, otherwise immediate
+    const clearDelay = exitingNodeIds.size > 0 ? 200 : 0
+
+    setTimeout(() => {
+      svg.selectAll('*').remove()
+      renderContent()
+    }, clearDelay)
+
+    function renderContent() {
 
     const width = window.innerWidth
     const height = window.innerHeight
     svg.attr('width', width).attr('height', height)
 
     const g = svg.append('g')
+      .attr('class', 'graph-container')
+      .style('will-change', 'transform')  // Hint browser to optimize transforms
 
-    // Minimum effective font size (in screen pixels) for text to be visible
-    // Text is hidden if fontSize * zoomScale < this threshold
-    const MIN_READABLE_FONT_SIZE = 6
+    // Zoom level thresholds for CSS-based label visibility
+    // Aggressive hiding - need to zoom in to see text
+    const getZoomClass = (scale: number): string => {
+      if (scale < 1.0) return 'zoom-xs'      // Only Ring 0-1
+      if (scale < 1.6) return 'zoom-sm'      // Ring 0-2
+      if (scale < 2.5) return 'zoom-md'      // Ring 0-3
+      if (scale < 4.0) return 'zoom-lg'      // Ring 0-4
+      return 'zoom-xl'                        // All labels including Ring 5
+    }
 
     // Zoom - preserve transform across re-renders
     const zoom = d3.zoom<SVGSVGElement, unknown>()
       .scaleExtent([0.05, 20])
       .on('zoom', (event) => {
+        // Instant transform update (keeps panning smooth)
         g.attr('transform', event.transform)
         currentTransformRef.current = event.transform
-        // Update label visibility per ring - if most labels in a ring are too small, hide all
-        const zoomScale = event.transform.k
 
-        // Group labels by ring and check visibility
-        const labelsByRing = new Map<number, Element[]>()
-        const visibleCountByRing = new Map<number, number>()
-        const totalCountByRing = new Map<number, number>()
-
-        g.selectAll('text.node-label').each(function() {
-          const el = this as Element
-          const label = d3.select(el)
-          const ring = parseInt(label.attr('data-ring') || '0')
-          const fontSize = parseFloat(label.attr('font-size') || '10')
-          const effectiveSize = fontSize * zoomScale
-          const isReadable = effectiveSize >= MIN_READABLE_FONT_SIZE
-
-          if (!labelsByRing.has(ring)) {
-            labelsByRing.set(ring, [])
-            visibleCountByRing.set(ring, 0)
-            totalCountByRing.set(ring, 0)
-          }
-          labelsByRing.get(ring)!.push(el)
-          totalCountByRing.set(ring, (totalCountByRing.get(ring) || 0) + 1)
-          if (isReadable) {
-            visibleCountByRing.set(ring, (visibleCountByRing.get(ring) || 0) + 1)
-          }
-        })
-
-        // Show ring labels only if majority (>50%) are readable
-        for (const [ring, elements] of labelsByRing) {
-          const total = totalCountByRing.get(ring) || 1
-          const visible = visibleCountByRing.get(ring) || 0
-          const showRing = visible / total > 0.5
-          elements.forEach(el => d3.select(el).style('opacity', showRing ? 1 : 0))
-        }
+        // Update zoom class for CSS-based label visibility (single DOM write)
+        const zoomClass = getZoomClass(event.transform.k)
+        g.attr('class', `graph-container ${zoomClass}`)
       })
 
     zoomRef.current = zoom
     svg.call(zoom)
 
-    // Only set initial zoom if no transform exists yet
-    if (currentTransformRef.current) {
+    // Only set initial zoom if no transform exists yet and not animating
+    if (isAnimatingZoomRef.current) {
+      // Don't interfere with ongoing zoom animation
+      console.log('[Render] Skipping transform restore - animation in progress')
+    } else if (currentTransformRef.current) {
       // Restore previous transform
       svg.call(zoom.transform, currentTransformRef.current)
     } else {
@@ -555,21 +758,61 @@ function App() {
     const nodeMap = new Map<string, ExpandableNode>()
     visibleNodes.forEach(n => nodeMap.set(n.id, n))
 
+    // Detect new nodes for enter animation (used by edges, nodes, and labels)
+    const prevVisibleIds = prevVisibleNodeIdsRef.current
+    const currentVisibleIds = new Set(visibleNodes.map(n => n.id))
+    const newNodeIds = new Set<string>()
+    currentVisibleIds.forEach(id => {
+      if (!prevVisibleIds.has(id)) newNodeIds.add(id)
+    })
+
+    // Get parent position for animating new nodes from
+    const getParentPosition = (node: ExpandableNode): { x: number; y: number } => {
+      if (node.parentId) {
+        const parentPos = nodePositionsRef.current.get(node.parentId)
+        if (parentPos) return parentPos
+        const parent = visibleNodes.find(n => n.id === node.parentId)
+        if (parent) return { x: parent.x, y: parent.y }
+      }
+      return { x: 0, y: 0 }
+    }
+
     // Draw structural edges (tree skeleton)
-    g.append('g')
+    // Edges to new nodes animate from source to target
+    const edgesGroup = g.append('g')
       .attr('class', 'structural-edges')
-      .selectAll('line')
+
+    edgesGroup.selectAll('line')
       .data(visibleEdges)
       .enter()
       .append('line')
       .attr('x1', d => nodeMap.get(d.sourceId)?.x || 0)
       .attr('y1', d => nodeMap.get(d.sourceId)?.y || 0)
+      .attr('x2', d => {
+        // New edges start at source position
+        if (newNodeIds.has(d.targetId)) return nodeMap.get(d.sourceId)?.x || 0
+        return nodeMap.get(d.targetId)?.x || 0
+      })
+      .attr('y2', d => {
+        if (newNodeIds.has(d.targetId)) return nodeMap.get(d.sourceId)?.y || 0
+        return nodeMap.get(d.targetId)?.y || 0
+      })
+      .attr('stroke', '#ccc')
+      .attr('stroke-width', d => vLayout.getEdgeThickness(d.sourceRing))
+      .attr('stroke-opacity', d => {
+        // New edges start invisible
+        if (newNodeIds.has(d.targetId)) return 0
+        return vLayout.getEdgeOpacity(d.sourceRing)
+      })
+      .style('pointer-events', 'none')
+      // Animate edges to new nodes
+      .filter(d => newNodeIds.has(d.targetId))
+      .transition()
+      .duration(300)
+      .ease(d3.easeCubicOut)
       .attr('x2', d => nodeMap.get(d.targetId)?.x || 0)
       .attr('y2', d => nodeMap.get(d.targetId)?.y || 0)
-      .attr('stroke', '#ccc')
-      .attr('stroke-width', d => d.sourceRing <= 2 ? 2 : (d.sourceRing <= 4 ? 1 : 0.5))
-      .attr('stroke-opacity', d => d.sourceRing <= 2 ? 0.6 : (d.sourceRing <= 4 ? 0.3 : 0.15))
-      .style('pointer-events', 'none')
+      .attr('stroke-opacity', d => vLayout.getEdgeOpacity(d.sourceRing))
 
     // Node styling - all nodes colored by domain
     const getColor = (n: ExpandableNode): string => {
@@ -577,48 +820,142 @@ function App() {
       return DOMAIN_COLORS[n.semanticPath.domain] || '#9E9E9E'
     }
 
-    /**
-     * Get node size based purely on SHAP importance.
-     * Uses area-proportional sizing: radius = min + (max - min) * sqrt(importance)
-     * This ensures visual area (π*r²) is directly proportional to importance value.
-     * NO multipliers - node area represents importance truthfully.
-     */
-    const getSize = (n: ExpandableNode): number => {
-      const range = NODE_SIZE_RANGES[n.ring] || { min: 2, max: 8 }
-      const importance = n.importance || 0
+    // Pre-compute percentiles for border thickness (within-ring ranking)
+    const nodesByRing = new Map<number, ExpandableNode[]>()
+    visibleNodes.forEach(n => {
+      if (!nodesByRing.has(n.ring)) nodesByRing.set(n.ring, [])
+      nodesByRing.get(n.ring)!.push(n)
+    })
 
-      // Area-proportional: radius scales with sqrt(importance)
-      // so that visual area (π*r²) is proportional to importance
-      return range.min + (range.max - range.min) * Math.sqrt(importance)
+    const getPercentileInRing = (node: ExpandableNode): number => {
+      const ringNodes = nodesByRing.get(node.ring) || []
+      if (ringNodes.length <= 1) return 1
+      const sorted = ringNodes.map(n => n.importance).sort((a, b) => b - a)
+      const rank = sorted.findIndex(imp => imp <= node.importance)
+      return 1 - (rank / sorted.length)
     }
 
-    // Draw nodes
+    const getBorderWidth = (node: ExpandableNode): number => {
+      const percentile = getPercentileInRing(node)
+      let baseWidth: number
+      if (percentile >= 0.95) baseWidth = 2      // Top 5%
+      else if (percentile >= 0.75) baseWidth = 1.5 // Top 25%
+      else if (percentile >= 0.50) baseWidth = 1   // Top 50%
+      else baseWidth = 0.75                        // Bottom 50%
+
+      // Scale stroke proportionally for small nodes (max 50% of radius)
+      const radius = getSize(node)
+      return Math.min(baseWidth, radius * 0.5)
+    }
+
+    /**
+     * Get node size using viewport-aware scale - area proportional to importance.
+     * Same importance = same area across ALL rings (statistical truth).
+     */
+    const getSize = (n: ExpandableNode): number => {
+      return vLayout.getNodeRadius(n.importance || 0)
+    }
+
+    /**
+     * Check if node is at floor size
+     */
+    const isNodeFloored = (importance: number): boolean => {
+      return vLayout.isNodeFloored(importance)
+    }
+
+    // Create node lookup map for event delegation
+    const nodeDataMap = new Map<string, ExpandableNode>()
+    visibleNodes.forEach(n => nodeDataMap.set(n.id, n))
+
+    // Draw nodes with enter animation
+    // Size = global importance (statistical truth)
+    // Border thickness = within-ring percentile (navigability aid)
+    // Border color = domain color (solid) or gray (dashed, if floored)
     g.selectAll('circle.node')
       .data(visibleNodes)
       .enter()
       .append('circle')
       .attr('class', 'node')
+      .attr('data-id', d => d.id)
+      .attr('cx', d => newNodeIds.has(d.id) ? getParentPosition(d).x : d.x)
+      .attr('cy', d => newNodeIds.has(d.id) ? getParentPosition(d).y : d.y)
+      .attr('r', d => newNodeIds.has(d.id) ? 0 : getSize(d))
+      .attr('fill', d => getColor(d))
+      .attr('stroke', d => isNodeFloored(d.importance) ? '#999' : (DOMAIN_COLORS[d.semanticPath.domain] || '#9E9E9E'))
+      .attr('stroke-width', d => {
+        const radius = getSize(d)
+        if (isNodeFloored(d.importance)) return Math.min(1, radius * 0.5)
+        return getBorderWidth(d)
+      })
+      .attr('stroke-dasharray', d => isNodeFloored(d.importance) ? '2,2' : 'none')
+      .style('cursor', d => d.hasChildren ? 'pointer' : 'default')
+      .style('opacity', d => newNodeIds.has(d.id) ? 0 : 1)
+      // Animate new nodes from parent position to final position
+      .filter(d => newNodeIds.has(d.id))
+      .transition()
+      .duration(300)
+      .ease(d3.easeCubicOut)
       .attr('cx', d => d.x)
       .attr('cy', d => d.y)
       .attr('r', d => getSize(d))
-      .attr('fill', d => getColor(d))
-      .attr('stroke', '#fff')
-      .attr('stroke-width', 0.5)
-      .style('cursor', d => d.hasChildren ? 'pointer' : 'default')
-      .on('click', (event, d) => {
+      .style('opacity', 1)
+
+    // Update refs for next render
+    prevVisibleNodeIdsRef.current = currentVisibleIds
+    visibleNodes.forEach(n => {
+      nodePositionsRef.current.set(n.id, { x: n.x, y: n.y, parentId: n.parentId })
+    })
+
+    // Event delegation: single handlers on parent <g> instead of per-node
+    // This reduces ~7,500 event listeners to just 3
+    g.on('click', (event) => {
+      const target = event.target as Element
+      if (target.classList.contains('node')) {
         event.stopPropagation()
-        if (d.hasChildren) {
-          toggleExpansion(d.id)
+        const nodeId = target.getAttribute('data-id')
+        if (nodeId) {
+          const node = nodeDataMap.get(nodeId)
+          if (node?.hasChildren) {
+            toggleExpansion(node.id)
+          }
         }
-      })
-      .on('mouseenter', function(_, d) {
-        d3.select(this).attr('r', getSize(d) * 1.5)
-        setHoveredNode(d)
-      })
-      .on('mouseleave', function(_, d) {
-        d3.select(this).attr('r', getSize(d))
-        setHoveredNode(null)
-      })
+      }
+    })
+    .on('mouseenter', (event) => {
+      const target = event.target as Element
+      if (target.classList.contains('node')) {
+        const nodeId = target.getAttribute('data-id')
+        if (nodeId) {
+          const node = nodeDataMap.get(nodeId)
+          if (node) {
+            const radius = getSize(node)
+            const baseStroke = isNodeFloored(node.importance) ? Math.min(1, radius * 0.5) : getBorderWidth(node)
+            const hoverStroke = Math.min(baseStroke + 1, radius * 0.8)
+            d3.select(target)
+              .attr('r', radius * 1.3)
+              .attr('stroke-width', hoverStroke)
+            setHoveredNode(node)
+          }
+        }
+      }
+    }, true)  // Use capture phase for mouseenter
+    .on('mouseleave', (event) => {
+      const target = event.target as Element
+      if (target.classList.contains('node')) {
+        const nodeId = target.getAttribute('data-id')
+        if (nodeId) {
+          const node = nodeDataMap.get(nodeId)
+          if (node) {
+            const radius = getSize(node)
+            const baseStroke = isNodeFloored(node.importance) ? Math.min(1, radius * 0.5) : getBorderWidth(node)
+            d3.select(target)
+              .attr('r', radius)
+              .attr('stroke-width', baseStroke)
+            setHoveredNode(null)
+          }
+        }
+      }
+    }, true)  // Use capture phase for mouseleave
 
     // Labels for children of expanded nodes (so you can read what just appeared)
     // Text size is proportional to node size
@@ -634,19 +971,53 @@ function App() {
     const currentScale = currentTransformRef.current?.k ?? 1
 
     // Pre-compute label positions for all label nodes (avoid repeated calculations)
-    // Text size scales with node size but capped to avoid overly large labels
-    const labelPositions = new Map<string, { x: number; y: number; anchor: string; rotation: number; fontSize: number }>()
+    // Text size is purely importance-based (no ring scaling) with user-adjustable multiplier
+    // Labels that would cross into the next ring are wrapped into two lines
+    const labelPositions = new Map<string, { x: number; y: number; anchor: string; rotation: number; fontSize: number; lines: string[] }>()
+
+    // Helper: estimate text width
+    const estimateTextWidth = (text: string, fontSize: number) => text.length * fontSize * AVG_CHAR_WIDTH_RATIO
+
+    // Helper: split label at middle word
+    const splitLabel = (label: string): string[] => {
+      const words = label.split(' ')
+      if (words.length <= 1) return [label]
+      const midPoint = Math.ceil(words.length / 2)
+      return [
+        words.slice(0, midPoint).join(' '),
+        words.slice(midPoint).join(' ')
+      ]
+    }
+
+    // Get next ring radius for collision detection
+    const getNextRingRadius = (ring: number): number => {
+      const nextRing = ring + 1
+      if (nextRing < ringRadii.length) return ringRadii[nextRing]
+      return Infinity // No next ring, no constraint
+    }
+
     for (const d of labelNodes) {
       const nodeSize = getSize(d)
-      // Smaller text: use nodeSize * 0.5 with lower min/max bounds
-      const baseSize = Math.min(Math.max(nodeSize * 0.5, 5), 10)
-      // Ring 5 gets much smaller text, ring 4 slightly smaller
-      const fontSize = d.ring === 5 ? baseSize * 0.35 : (d.ring === 4 ? baseSize * 0.7 : baseSize)
+      const importance = d.importance ?? 0
+      // Text size using viewport-aware calculation with ring-based scaling
+      const fontSize = vLayout.getFontSize(importance, d.ring)
+      const label = d.label || ''
 
       if (d.ring <= 1) {
+        // Center/inner rings: labels below node, check if width crosses next ring
         const offset = nodeSize + fontSize * 0.5 + 4
-        labelPositions.set(d.id, { x: d.x, y: d.y + offset, anchor: 'middle', rotation: 0, fontSize })
+        const textWidth = estimateTextWidth(label, fontSize)
+        const nodeRadius = Math.sqrt(d.x * d.x + d.y * d.y)
+        const nextRingRadius = getNextRingRadius(d.ring)
+
+        // Check if text would extend into next ring (for centered text, check half-width on each side)
+        const textEndRadius = nodeRadius + offset + fontSize // Approximate vertical extent
+        const needsWrap = textEndRadius > nextRingRadius - 5 || textWidth > (nextRingRadius - nodeRadius) * 1.5
+
+        const lines = needsWrap && label.includes(' ') ? splitLabel(label) : [label]
+        labelPositions.set(d.id, { x: d.x, y: d.y + offset, anchor: 'middle', rotation: 0, fontSize, lines })
       } else {
+        // Outer rings: radial labels
         const offset = nodeSize + fontSize * 0.3 + 2
         const angle = Math.atan2(d.y, d.x)
         const angleDeg = angle * (180 / Math.PI)
@@ -659,28 +1030,27 @@ function App() {
           rotation = angleDeg + 180
           anchor = 'end'
         }
-        labelPositions.set(d.id, { x: labelX, y: labelY, anchor, rotation, fontSize })
+
+        // Calculate if text would cross into next ring
+        const nodeRadius = Math.sqrt(d.x * d.x + d.y * d.y)
+        const nextRingRadius = getNextRingRadius(d.ring)
+        const textWidth = estimateTextWidth(label, fontSize)
+
+        // For radial text, the end extends outward from the node
+        const textEndRadius = nodeRadius + offset + textWidth
+        const needsWrap = textEndRadius > nextRingRadius - 5
+
+        const lines = needsWrap && label.includes(' ') ? splitLabel(label) : [label]
+        labelPositions.set(d.id, { x: labelX, y: labelY, anchor, rotation, fontSize, lines })
       }
     }
 
-    // Calculate per-ring visibility for initial render
-    const visibleCountByRing = new Map<number, number>()
-    const totalCountByRing = new Map<number, number>()
-    for (const d of labelNodes) {
-      const pos = labelPositions.get(d.id)!
-      const effectiveSize = pos.fontSize * currentScale
-      const isReadable = effectiveSize >= MIN_READABLE_FONT_SIZE
-      totalCountByRing.set(d.ring, (totalCountByRing.get(d.ring) || 0) + 1)
-      if (isReadable) {
-        visibleCountByRing.set(d.ring, (visibleCountByRing.get(d.ring) || 0) + 1)
-      }
-    }
-    const ringVisibility = new Map<number, boolean>()
-    for (const [ring, total] of totalCountByRing) {
-      const visible = visibleCountByRing.get(ring) || 0
-      ringVisibility.set(ring, visible / total > 0.5)
-    }
+    // Set initial zoom class for CSS-based label visibility
+    const initialZoomClass = getZoomClass(currentScale)
+    g.attr('class', `graph-container ${initialZoomClass}`)
 
+    // Render labels - CSS handles visibility based on zoom level
+    // Don't set inline opacity - let CSS control visibility to avoid override issues
     g.selectAll('text.node-label')
       .data(labelNodes)
       .enter()
@@ -688,8 +1058,7 @@ function App() {
       .attr('class', 'node-label')
       .each(function(d) {
         const pos = labelPositions.get(d.id)!
-        const isVisible = ringVisibility.get(d.ring) ?? false
-        d3.select(this)
+        const textEl = d3.select(this)
           .attr('x', pos.x)
           .attr('y', pos.y)
           .attr('text-anchor', pos.anchor)
@@ -698,12 +1067,25 @@ function App() {
           .attr('font-weight', d.ring <= 1 ? 'bold' : 'normal')
           .attr('fill', '#333')
           .attr('data-ring', d.ring)
-          .style('opacity', isVisible ? 1 : 0)
           .style('pointer-events', 'none')
-          .text(d.label)
-      })
 
-  }, [visibleNodes, visibleEdges, computedRingsState, ringConfigs, expandedNodes, toggleExpansion])
+        // Render single or multi-line text
+        if (pos.lines.length === 1) {
+          textEl.text(pos.lines[0])
+        } else {
+          // Multi-line: use tspans, stack vertically
+          const lineHeight = pos.fontSize * 1.1
+          pos.lines.forEach((line, i) => {
+            textEl.append('tspan')
+              .attr('x', pos.x)
+              .attr('dy', i === 0 ? 0 : lineHeight)
+              .text(line)
+          })
+        }
+      })
+    } // end renderContent
+
+  }, [visibleNodes, visibleEdges, computedRingsState, ringConfigs, expandedNodes, toggleExpansion, ringRadii, layoutValues])
 
   // Fetch data once on mount
   useEffect(() => {
@@ -720,6 +1102,116 @@ function App() {
     renderVisualization()
   }, [renderVisualization])
 
+  // Auto-zoom on expand/collapse
+  useEffect(() => {
+    if (!pendingZoomRef.current || !zoomRef.current || !svgRef.current || visibleNodes.length === 0) return
+
+    const { nodeId, action } = pendingZoomRef.current
+
+    // Find the node that was expanded/collapsed
+    const targetNode = visibleNodes.find(n => n.id === nodeId)
+    if (!targetNode) return
+
+    if (action === 'expand') {
+      // For expand, we need to wait until children are actually visible
+      const directChildren = visibleNodes.filter(n => n.parentId === nodeId)
+      if (targetNode.hasChildren && directChildren.length === 0) {
+        // Children not yet in visibleNodes, wait for next update
+        return
+      }
+    }
+
+    // Clear the pending action now that we're ready to process
+    pendingZoomRef.current = null
+
+    const svg = d3.select(svgRef.current)
+    const zoom = zoomRef.current
+    const width = window.innerWidth
+    const height = window.innerHeight
+    const currentTransform = currentTransformRef.current || d3.zoomIdentity
+
+    // Delay to let render complete
+    setTimeout(() => {
+      // Find nodes for the subtree that was just expanded/collapsed
+      const getSubtreeNodes = (rootId: string): ExpandableNode[] => {
+        const result: ExpandableNode[] = []
+        const rootNode = visibleNodes.find(n => n.id === rootId)
+        if (rootNode) result.push(rootNode)
+
+        const addDescendants = (parentId: string) => {
+          visibleNodes.filter(n => n.parentId === parentId).forEach(child => {
+            result.push(child)
+            addDescendants(child.id)
+          })
+        }
+        addDescendants(rootId)
+        return result
+      }
+
+      // Only include the subtree that was just expanded - ignore root and ring outlines
+      const relevantNodes = getSubtreeNodes(nodeId)
+      if (relevantNodes.length <= 1) return  // Just the node itself, no children to zoom to
+
+      // Calculate center of the subtree (ignore bounding box size for zoom)
+      const xs = relevantNodes.map(n => n.x)
+      const ys = relevantNodes.map(n => n.y)
+      const centerX = (Math.min(...xs) + Math.max(...xs)) / 2
+      const centerY = (Math.min(...ys) + Math.max(...ys)) / 2
+
+      // Keep current zoom - just pan to center the subtree
+      // Only zoom in slightly if we're very zoomed out
+      const currentScale = currentTransform.k
+      let newScale = currentScale
+
+      if (action === 'expand' && currentScale < 0.8) {
+        // If very zoomed out, zoom in a bit to see detail
+        newScale = 0.8
+      }
+      // Cap at reasonable max
+      newScale = Math.min(newScale, 3)
+
+      // Calculate translation to center the relevant content
+      const newX = width / 2 - centerX * newScale
+      const newY = height / 2 - centerY * newScale
+
+      const newTransform = d3.zoomIdentity.translate(newX, newY).scale(newScale)
+
+      // Animate using manual interpolation for smoother results
+      isAnimatingZoomRef.current = true
+      const startTransform = currentTransform
+      const duration = 400
+      const startTime = performance.now()
+
+      const animate = (currentTime: number) => {
+        const elapsed = currentTime - startTime
+        const t = Math.min(elapsed / duration, 1)
+        // Ease out cubic
+        const eased = 1 - Math.pow(1 - t, 3)
+
+        const interpolatedK = startTransform.k + (newTransform.k - startTransform.k) * eased
+        const interpolatedX = startTransform.x + (newTransform.x - startTransform.x) * eased
+        const interpolatedY = startTransform.y + (newTransform.y - startTransform.y) * eased
+
+        const interpolatedTransform = d3.zoomIdentity.translate(interpolatedX, interpolatedY).scale(interpolatedK)
+
+        // Apply transform directly to the g element and update zoom
+        svg.select('g.graph-container').attr('transform', interpolatedTransform.toString())
+        currentTransformRef.current = interpolatedTransform
+
+        if (t < 1) {
+          requestAnimationFrame(animate)
+        } else {
+          // Sync zoom behavior state at the end
+          svg.call(zoom.transform, newTransform)
+          currentTransformRef.current = newTransform
+          isAnimatingZoomRef.current = false
+        }
+      }
+
+      requestAnimationFrame(animate)
+    }, 100)  // Delay to let render complete
+  }, [visibleNodes, expandedNodes])
+
   return (
     <div style={{ width: '100vw', height: '100vh', overflow: 'hidden', background: '#fafafa' }}>
       <div style={{
@@ -733,8 +1225,23 @@ function App() {
         </div>
       </div>
 
-      {loading && <div style={{ position: 'absolute', top: '50%', left: '50%', transform: 'translate(-50%, -50%)' }}>Loading...</div>}
-      {error && <div style={{ position: 'absolute', top: '50%', left: '50%', transform: 'translate(-50%, -50%)', color: 'red' }}>Error: {error}</div>}
+      {/* Loading Screen */}
+      {loading && (
+        <div className="loading-screen">
+          <div className="loading-spinner" />
+          <div className="loading-text">Loading 2,583 nodes...</div>
+          <div className="loading-subtext">Quality of Life Semantic Hierarchy</div>
+        </div>
+      )}
+
+      {/* Error State */}
+      {error && (
+        <div className="loading-screen">
+          <div style={{ fontSize: 48, marginBottom: 16 }}>⚠️</div>
+          <div style={{ color: '#e53935', fontSize: 16, fontWeight: 'bold' }}>Failed to load data</div>
+          <div style={{ color: '#666', fontSize: 13, marginTop: 8 }}>{error}</div>
+        </div>
+      )}
 
       {stats && (
         <div style={{ position: 'absolute', top: 70, left: 10, background: 'white', padding: 12, borderRadius: 4, boxShadow: '0 2px 4px rgba(0,0,0,0.1)', fontSize: 13 }}>
@@ -800,49 +1307,144 @@ function App() {
         </div>
       )}
 
-      {/* Layout Controls - Below domain legend */}
-      <LayoutControls
-        ringRadii={ringRadii}
-        onRingRadiusChange={handleRingRadiusChange}
-        ringLabels={RING_LABELS}
-      />
+      {/* Reset View Button - Top right */}
+      <button
+        onClick={resetView}
+        style={{
+          position: 'absolute',
+          top: 10,
+          right: 10,
+          padding: '8px 16px',
+          fontSize: 13,
+          fontWeight: 'bold',
+          cursor: 'pointer',
+          border: '1px solid #ccc',
+          borderRadius: 4,
+          background: 'white',
+          boxShadow: '0 2px 4px rgba(0,0,0,0.1)',
+          zIndex: 100
+        }}
+        title="Reset view to initial state (R or Home)"
+      >
+        Reset View
+      </button>
 
       <svg ref={svgRef} style={{ width: '100%', height: '100%' }} />
 
-      {/* Hover tooltip panel */}
-      {hoveredNode && (
+      {/* FPS Counter (dev mode only) */}
+      {import.meta.env.DEV && fps > 0 && (
         <div style={{
-          position: 'absolute', bottom: 20, left: '50%', transform: 'translateX(-50%)',
-          background: 'white', padding: '12px 16px', borderRadius: 8,
-          boxShadow: '0 4px 12px rgba(0,0,0,0.15)', maxWidth: 400, zIndex: 100,
-          pointerEvents: 'none'
+          position: 'absolute',
+          bottom: 10,
+          left: 10,
+          padding: '4px 8px',
+          fontSize: 11,
+          fontFamily: 'monospace',
+          background: fps >= 50 ? 'rgba(76, 175, 80, 0.9)' : fps >= 30 ? 'rgba(255, 152, 0, 0.9)' : 'rgba(244, 67, 54, 0.9)',
+          color: 'white',
+          borderRadius: 4,
+          zIndex: 100
         }}>
-          <div style={{ display: 'flex', gap: 6, flexWrap: 'wrap', marginBottom: 6 }}>
-            <span style={{ padding: '2px 8px', borderRadius: 4, backgroundColor: '#eee', fontSize: 11 }}>
-              {ringConfigs[hoveredNode.ring]?.label || `Ring ${hoveredNode.ring}`}
-            </span>
-            {hoveredNode.semanticPath.domain && (
-              <span style={{ padding: '2px 8px', borderRadius: 4, backgroundColor: DOMAIN_COLORS[hoveredNode.semanticPath.domain] || '#9E9E9E', color: 'white', fontSize: 11, fontWeight: 'bold' }}>
-                {hoveredNode.semanticPath.domain}
-              </span>
-            )}
-            {hoveredNode.importance > 0 && (
-              <span style={{ padding: '2px 8px', borderRadius: 4, backgroundColor: '#4CAF50', color: 'white', fontSize: 11 }}>
-                Importance: {(hoveredNode.importance * 100).toFixed(1)}%
-              </span>
-            )}
-            {hoveredNode.hasChildren && (
-              <span style={{ padding: '2px 8px', borderRadius: 4, backgroundColor: expandedNodes.has(hoveredNode.id) ? '#2196F3' : '#666', color: 'white', fontSize: 11 }}>
-                {expandedNodes.has(hoveredNode.id) ? 'Click to collapse' : `Click to expand (${hoveredNode.childIds.length} children)`}
-              </span>
-            )}
-          </div>
-          <div style={{ fontWeight: 'bold', fontSize: 14, marginBottom: 2 }}>{hoveredNode.label}</div>
-          {hoveredNode.description && (
-            <div style={{ fontSize: 12, color: '#666' }}>{hoveredNode.description}</div>
-          )}
+          {fps} FPS
         </div>
       )}
+
+      {/* Hover tooltip panel */}
+      {hoveredNode && layoutValues && viewportLayoutRef.current && (() => {
+        const vLayout = viewportLayoutRef.current!
+        const { sizeRange } = layoutValues
+
+        // Compute global and local ranks for tooltip
+        const sortedGlobal = allNodes.map(n => n.importance).sort((a, b) => b - a)
+        const globalRank = sortedGlobal.findIndex(imp => imp <= hoveredNode.importance) + 1
+
+        const ringNodes = allNodes.filter(n => n.ring === hoveredNode.ring)
+        const sortedRing = ringNodes.map(n => n.importance).sort((a, b) => b - a)
+        const ringRank = sortedRing.findIndex(imp => imp <= hoveredNode.importance) + 1
+        const ringPercentile = ((1 - ringRank / ringNodes.length) * 100).toFixed(0)
+
+        // Check if node is at floor size using viewport-aware calculation
+        const floored = vLayout.isNodeFloored(hoveredNode.importance)
+        const targetArea = sizeRange.minArea + hoveredNode.importance * sizeRange.scaleFactor
+        const targetRadius = Math.sqrt(targetArea / Math.PI)
+
+        return (
+          <div style={{
+            position: 'absolute', bottom: 20, left: '50%', transform: 'translateX(-50%)',
+            background: 'white', padding: '12px 16px', borderRadius: 8,
+            boxShadow: '0 4px 12px rgba(0,0,0,0.15)', maxWidth: 500, zIndex: 100,
+            pointerEvents: 'none'
+          }}>
+            {/* Badge row: ring, domain, subdomain, special status */}
+            <div style={{ display: 'flex', gap: 6, flexWrap: 'wrap', marginBottom: 6 }}>
+              <span style={{ padding: '2px 8px', borderRadius: 4, backgroundColor: '#eee', fontSize: 11 }}>
+                {ringConfigs[hoveredNode.ring]?.label || `Ring ${hoveredNode.ring}`}
+              </span>
+              {hoveredNode.semanticPath.domain && (
+                <span style={{ padding: '2px 8px', borderRadius: 4, backgroundColor: DOMAIN_COLORS[hoveredNode.semanticPath.domain] || '#9E9E9E', color: 'white', fontSize: 11, fontWeight: 'bold' }}>
+                  {hoveredNode.semanticPath.domain}
+                </span>
+              )}
+              {hoveredNode.semanticPath.subdomain && hoveredNode.semanticPath.subdomain !== hoveredNode.semanticPath.domain && (
+                <span style={{ padding: '2px 8px', borderRadius: 4, backgroundColor: '#f0f0f0', fontSize: 11, color: '#555' }}>
+                  {hoveredNode.semanticPath.subdomain}
+                </span>
+              )}
+              {hoveredNode.isOutcome && (
+                <span style={{ padding: '2px 8px', borderRadius: 4, backgroundColor: '#9C27B0', color: 'white', fontSize: 11 }}>
+                  Outcome
+                </span>
+              )}
+              {hoveredNode.isDriver && (
+                <span style={{ padding: '2px 8px', borderRadius: 4, backgroundColor: '#4CAF50', color: 'white', fontSize: 11 }}>
+                  Driver
+                </span>
+              )}
+              {floored && (
+                <span style={{ padding: '2px 8px', borderRadius: 4, backgroundColor: '#999', color: 'white', fontSize: 11 }}>
+                  Min size
+                </span>
+              )}
+            </div>
+
+            {/* Node name */}
+            <div style={{ fontWeight: 'bold', fontSize: 14, marginBottom: 6 }}>{hoveredNode.label}</div>
+
+            {/* Stats grid */}
+            <div style={{ display: 'grid', gridTemplateColumns: '1fr 1fr', gap: '4px 16px', fontSize: 11, color: '#444', marginBottom: 8 }}>
+              <div><strong>Global Rank:</strong> #{globalRank} of {allNodes.length}</div>
+              <div><strong>Importance:</strong> {(hoveredNode.importance * 100).toFixed(2)}%</div>
+              <div><strong>Ring Rank:</strong> #{ringRank} of {ringNodes.length}</div>
+              <div><strong>Percentile:</strong> Top {ringPercentile}%</div>
+              <div><strong>Connections:</strong> {hoveredNode.degree}</div>
+              <div><strong>Children:</strong> {hoveredNode.childIds.length}</div>
+            </div>
+
+            {/* Expand/collapse hint */}
+            {hoveredNode.hasChildren && (
+              <div style={{ fontSize: 11, color: expandedNodes.has(hoveredNode.id) ? '#2196F3' : '#666', marginBottom: 6 }}>
+                {expandedNodes.has(hoveredNode.id)
+                  ? `Click to collapse ${hoveredNode.childIds.length} children`
+                  : `Click to expand ${hoveredNode.childIds.length} children`}
+              </div>
+            )}
+
+            {/* Description */}
+            {hoveredNode.description && (
+              <div style={{ fontSize: 12, color: '#666', borderTop: '1px solid #eee', paddingTop: 6 }}>
+                {hoveredNode.description}
+              </div>
+            )}
+
+            {/* Floor size note (smaller, less prominent) */}
+            {floored && (
+              <div style={{ fontSize: 10, color: '#888', fontStyle: 'italic', marginTop: 4 }}>
+                Size: {targetRadius.toFixed(1)}px → {sizeRange.minRadius.toFixed(1)}px (floored)
+              </div>
+            )}
+          </div>
+        )
+      })()}
     </div>
   )
 }

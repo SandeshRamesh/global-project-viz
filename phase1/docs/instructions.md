@@ -1,130 +1,255 @@
-Phase 1: MVP - Path 1 Foundation 🔄 CURRENT (Weeks 1-4)
-Objective: Functional Global + Local Views with core interactions
-Target Users: Path 1 (Explorer) - policy researchers, NGO workers, curious citizens
-Implementation Checklist:
-Week 1: Global View - Radial Layout Engine
-Visual Structure:
-[ ] Implement radial/solar layout (8 outcome sectors, 45° wedges each)
-[ ] Position L2 nodes (45 coarse domains) in inner ring
-[ ] Position L3 nodes (196 fine domains) in middle ring
-[ ] Position L4 nodes (569 groups) in outer ring
-[ ] Position L5 nodes (1,763 indicators) collapsed by default
-Edge Rendering:
-[ ] Draw hierarchical edges (parent-child, thick 3px solid lines)
-[ ] Draw causal edges (indicator-indicator, thin 1px translucent)
-[ ] Implement edge bundling for causal edges (hierarchical bundling algorithm)
-[ ] Apply opacity based on edge strength (0.3 baseline, 1.0 for selected)
-Visual Encoding:
-[ ] Color code by domain (7 colors: Education blue, Economic green, etc.)
-[ ] Sector glow backgrounds (8 outcome colors, opacity 0.12)
-[ ] Node size: Uniform 40px circles (no size encoding yet)
-[ ] Node border: 2px for groups, 1px for indicators
-Interactions:
-[ ] Click node → expand/collapse children (animate in 300ms)
-[ ] Auto-frame on expand (pan/zoom to keep expanded nodes visible)
-[ ] Hover node → show tooltip (name, domain, SHAP, degree)
-[ ] Hover edge → show tooltip (beta coefficient, confidence interval)
-[ ] Pan canvas (mouse drag)
-[ ] Zoom canvas (scroll wheel, min 0.5x, max 3.0x)
-Deliverables:
-[ ] GlobalView.jsx component (1,500 lines)
-[ ] RadialLayout.js algorithm (force-directed with sector constraints)
-[ ] EdgeBundling.js utility (Holten 2006 implementation)
-[ ] Basic CSS styling (domain color palette, hover states)
+# Phase 1 MVP: Global + Local Views
 
-Week 2: Local View - Sugiyama DAG Flowchart
-Visual Structure:
-[ ] Implement Sugiyama layered layout (vertical, top-down)
-[ ] Layer 0: Selected root node (the "target")
-[ ] Layer 1: Direct children (up to 3 visible, "+N more" button)
-[ ] Layer 2: Grandchildren (up to 3 per parent)
-[ ] Layer 3+: Further descendants (recursive expansion)
-Path Highlighting:
-[ ] Dashed gold line from selected node to root (breadcrumb path)
-[ ] Parent ghost navigation (click ghost → move up one level)
-[ ] Highlight path from Global View selection (preserve context)
-Edge Rendering:
-[ ] Sankey-style edge width (2-10px scaled by cumulative impact %)
-[ ] Magnitude filter (hide edges with cumulative impact <10%)
-[ ] Bezier curves (smooth vertical flow)
-Interactions:
-[ ] Click node → make it new root (re-render flowchart)
-[ ] Click "+N more" → expand hidden children (accordion)
-[ ] Hover node → show summary stats (children count, SHAP sum)
-[ ] Double-click node → return to Global View focused on this node
-Deliverables:
-[ ] LocalView.jsx component (1,200 lines)
-[ ] SugiyamaLayout.js algorithm (dagre.js wrapper)
-[ ] PathHighlighter.js utility (breadcrumb tracking)
-[ ] Transition animation between Global ↔ Local (500ms slide)
+## Core Philosophy
+**Phase 1 Goal:** Perfect the "understanding" layer
+**V3.0 Goal:** Add the "action" layer on top
 
-Week 3: Navigation & State Management
-View Switcher:
-[ ] Toggle button: Global ↔ Local (top nav bar)
-[ ] Overlay drawer transition (Global 60% left, Local 40% right slide-in)
-[ ] Preserve state when switching (selected node, zoom level, filters)
-Breadcrumb System:
-[ ] Display full expansion path (L0 → L1 → L2 → ... → selected node)
-[ ] Click breadcrumb → collapse back to that level
-[ ] Sync breadcrumb across Global and Local Views
-Quick Actions Panel:
-[ ] Appears on node selection (floating panel, right side)
-[ ] Actions: "Switch to Local View", "Collapse All", "Find Paths To...", "Show Stats"
-[ ] Context-aware (different actions for outcomes vs indicators)
-State Management:
-[ ] Zustand store for app state (current view, selected node, expanded set)
-[ ] URL sync (share links preserve state: ?view=local&node=NW.HCA.MALE.TO)
-[ ] Local storage for user preferences (last view, filter settings)
-Deliverables:
-[ ] NavigationBar.jsx (view switcher, breadcrumb)
-[ ] QuickActionsPanel.jsx (contextual actions)
-[ ] appStore.js (Zustand state management)
-[ ] urlSync.js (URL parameter handling)
+User mental model:
+1. **Explore** (Global View) → "What matters?"
+2. **Understand** (Local View) → "How does it work?"
+3. **Act** (Simulation - V3.0) → "What should I change?"
 
-Week 4: Filters & Search
-Global View Filters:
-[ ] Domain filter (7 checkboxes: toggle domains on/off)
-[ ] SHAP threshold slider (0.0-1.0, default 0.0001 to hide bottom 50%)
-[ ] Causal edge strength slider (0-100%, default 30%)
-[ ] Top N drivers filter (radio: All, Top 5, Top 10, Top 20)
-Local View Filters:
-[ ] Magnitude threshold slider (5-50%, default 10% cumulative impact)
-[ ] Max children per layer (slider: 3-10, default 3)
-[ ] Path depth limit (slider: 2-6 levels, default 4)
-Search:
-[ ] Autocomplete search bar (fuzzy match on 1,763 indicator names)
-[ ] Search results panel (shows matches, click to navigate)
-[ ] Search by domain (dropdown filter in search)
-[ ] Search by SHAP range (advanced: "SHAP > 0.01")
-Performance:
-[ ] Debounced filter updates (300ms delay to avoid lag)
-[ ] Memoized layout computation (cache positions when filters change)
-[ ] WebWorker for search indexing (don't block main thread)
-Deliverables:
-[ ] FilterPanel.jsx (collapsible sidebar, all filter controls)
-[ ] SearchBar.jsx (autocomplete, fuzzy matching)
-[ ] filterUtils.js (apply filters to graph data)
-[ ] searchIndex.js (Fuse.js fuzzy search)
+---
 
-Phase 1 Final Integration:
-Testing:
-[ ] Cross-browser testing (Chrome, Firefox, Safari, Edge)
-[ ] Mobile responsiveness check (tablet landscape minimum)
-[ ] Performance profiling (60fps target, <2s initial load)
-[ ] Accessibility audit (keyboard navigation, screen reader labels)
-Documentation:
-[ ] User guide (quick start, 3-minute video walkthrough)
-[ ] Keyboard shortcuts cheat sheet
-[ ] Troubleshooting FAQ
-Deployment:
-[ ] Deploy to argonanalytics.com
-[ ] Setup analytics (Plausible privacy-focused tracking)
-[ ] Social media preview cards (OpenGraph meta tags)
-[ ] Google Analytics goals (track engagement: time on site, views switched)
-Deliverables:
-[ ] Live site at argonanalytics.com ✨
-[ ] GitHub release v1.0.0
-[ ] User guide page (/guide)
-[ ] Public announcement (LinkedIn, Twitter, academic mailing lists)
+## Progress Tracker
 
+### Foundations ✅ COMPLETE
+- [x] Radial layout with dynamic ring sizing
+- [x] SHAP-based node importance (area = importance)
+- [x] Overlap-free positioning (adaptive spacing algorithm)
+- [x] Click expand/collapse
+- [x] Pan and zoom (min 0.1x, max 20x)
+- [x] Domain color coding (9 colors)
+- [x] Viewport-aware scaling system
+- [x] Basic hover tooltips (nodes)
 
+---
+
+## Implementation Phases (Ordered by Ease + Foundation)
+
+### Tier 1: Quick Wins (1-2 days each)
+**Goal:** Immediate UX improvements, performance foundation
+
+#### 1.1 Loading Screen ✅
+- [x] Show spinner + "Loading 2,583 nodes..."
+- [x] Avoid blank screen on initial load
+- [ ] Progress bar for data fetch (deferred - requires streaming)
+
+#### 1.2 Reset View Button ✅
+- [x] Always visible (top-right corner)
+- [x] Returns to initial zoom/pan (all outcomes visible, none expanded)
+- [x] Keyboard shortcut: `R` or `Home`
+
+#### 1.3 Basic Rotation on First Expand ~~SKIPPED~~
+- ~~Not needed - smart sector filling already prioritizes right-side placement~~
+
+#### 1.4 Performance Foundations ✅
+- [x] Debounced zoom/pan → **Replaced with CSS-based visibility (zero JS overhead)**
+- [x] FPS counter (dev mode only, color-coded: green ≥50, yellow ≥30, red <30)
+- [x] Ring 5 labels removed (1,763 text elements eliminated - too small to read)
+- [x] CSS zoom classes control label visibility per ring (single DOM write vs 7000+ ops)
+
+---
+
+### Tier 2: Core Polish (2-3 days each)
+**Goal:** Make Global View feel alive and responsive
+
+#### 2.1 Smooth Expand/Collapse Animations ✅
+- [x] Nodes animate from parent position with scale 0→1 and opacity 0→1
+- [x] Duration: 300ms ease-out (cubic)
+- [x] Edges animate from source to target position
+- [x] Labels fade in with 150ms delay after nodes
+- [ ] ~~Rings shift smoothly~~ (deferred - adds complexity)
+
+#### 2.2 Hover States ~~SKIPPED~~
+- ~~Already have node expand on hover - sufficient for now~~
+
+#### 2.3 Visual Feedback (Partial) ✅
+- [x] Collapsing: nodes shrink to r=0 with opacity fade (200ms)
+- [x] Edges retract back to source on collapse
+- [x] Labels fade out on collapse
+- [ ] ~~Click flash, spinner~~ (deferred - not critical)
+
+#### 2.4 Auto-Zoom on Expand ✅
+- [x] When user expands: smoothly zoom + pan to frame expanded subtree
+- [x] Target: expanded nodes fill ~70% of viewport (capped at 4x zoom)
+- [x] Duration: 500ms ease-in-out (cubic)
+- [x] On collapse: zoom out to show parent + siblings context (capped at 2x)
+
+#### 2.5 Rich Tooltips (Partial) ✅
+- [x] Node tooltip: name, domain, subdomain, importance, rank, connections, children, driver/outcome status
+- [x] Stats grid layout (2-column)
+- [x] No delay (instant), fixed bottom-center position
+- [ ] ~~Edge tooltip~~ (deferred - need causal edges first)
+- [ ] ~~Smart positioning~~ (deferred - fixed position works well)
+
+---
+
+### Tier 3: Major Features (1 week each)
+**Goal:** Complete navigation and causal visualization
+
+#### 3.1 Smart Sector Filling (Plan Exists)
+**Priority order for expanded outcomes:**
+1. Right lateral band (0° ±45°) - First expanded outcomes go here
+2. Left lateral band (180° ±45°) - When right band is full
+3. Top sector (90°) - Overflow
+4. Bottom sector (270°) - Final overflow
+
+- [ ] Implement `assignExpandedOutcomeAngles()` function
+- [ ] Implement `fillBandsSequentially()` with constraint-based packing
+- [ ] Distribute collapsed outcomes in remaining angular space
+- [ ] Test with various subtree sizes
+
+#### 3.2 Search & Navigation
+- [ ] Autocomplete search bar (fuzzy match with Fuse.js)
+- [ ] Top 5 matches as you type
+- [ ] Jump behavior: expand path to node, zoom to frame it
+- [ ] Search by domain filter dropdown
+- [ ] Recent searches history (last 5)
+
+#### 3.3 Causal Edges in Global View
+- [ ] Toggle: "Show Causal Edges" (checkbox, default OFF)
+- [ ] Style: thin (0.5px), translucent (0.15 opacity), dashed
+- [ ] Edge hover → highlight full path
+- [ ] Filter by edge strength slider (|β| > threshold)
+
+#### 3.4 Edge Bundling
+- [ ] Hierarchical edge bundling (Holten 2006)
+- [ ] Groups edges that flow through similar paths
+- [ ] Makes "data highways" visible
+
+#### 3.5 Sector Glow Backgrounds
+- [ ] 9 outcome sectors get subtle radial gradient fills
+- [ ] Color: domain color at 0.08 opacity
+- [ ] Helps orient "which outcome am I looking at?"
+
+---
+
+### Tier 4: Local View (2 weeks)
+**Goal:** Users can explore causal pathways in detail
+
+#### 4.1 Layout Implementation
+- [ ] Sugiyama layered layout (hierarchical DAG)
+- [ ] Horizontal layout (left-to-right flow)
+- [ ] Layer 0: Selected node (root of local view)
+- [ ] Layer 1-3+: Parents and grandparents (recursive)
+- [ ] Node sizing: same SHAP-based sizing as Global View
+
+#### 4.2 Edge Rendering
+- [ ] Thickness = effect size (β coefficient magnitude)
+- [ ] Color = sign (green = positive, red = negative, gray = neutral)
+- [ ] Style: Bezier curves (smooth flow)
+- [ ] Filter by effect size (hide |β| < 0.1 by default)
+
+#### 4.3 Local View Interactions
+- [ ] Click node → make it new root
+- [ ] Breadcrumb navigation (Root > Outcome > Domain > ... > Current)
+- [ ] "Show in Global View" button
+- [ ] Collapse distant nodes (+N more button)
+- [ ] Filter by effect size slider
+
+#### 4.4 View Switching
+- [ ] Toggle button: Global ↔ Local (top nav)
+- [ ] Preserves selected node when switching
+- [ ] Smooth slide transition (500ms)
+- [ ] URL sync (?view=local&node=NODE_ID)
+
+---
+
+## Testing & Polish (Final Week)
+
+### Visual Consistency
+- [ ] Color palette accessibility (WCAG AA contrast)
+- [ ] Colorblind-friendly (ColorBrewer palettes)
+- [ ] Typography: 12px min for readability
+- [ ] Consistent spacing in UI panels
+- [ ] Loading states for all async actions
+
+### Performance Validation
+- [ ] Load time: <3 seconds to interactive
+- [ ] Render: 60 FPS during interactions
+- [ ] Memory: <500 MB RAM
+- [ ] Bundle size: <2 MB gzipped
+
+### User Testing
+- [ ] Internal: expand all 9 outcomes (no overlaps)
+- [ ] Internal: search 20 random indicators (all found)
+- [ ] Friend testing: 5 people, task-based
+- [ ] Advisor testing: methodology review
+
+### Deployment
+- [ ] Cross-browser testing (Chrome, Firefox, Safari, Edge)
+- [ ] Mobile responsiveness (tablet landscape minimum)
+- [ ] URL state preservation (shareable links)
+- [ ] GitHub Pages deployment verified
+
+---
+
+## Phase 1 Complete Checklist
+
+**User Can:**
+- [ ] See all 2,583 nodes in radial layout
+- [ ] Expand any outcome to see its full indicator tree
+- [ ] Zoom and pan to explore dense areas
+- [ ] Search for any indicator by name
+- [ ] Switch to Local View to see causal pathways
+- [ ] Hover nodes/edges to see detailed stats
+- [ ] Toggle causal edges on/off in Global View
+- [ ] Auto-frame on expand (camera follows focus)
+- [ ] Navigate breadcrumbs (click to go back up hierarchy)
+- [ ] Share links (URL preserves view state)
+
+**System Performs:**
+- [ ] Loads in <3 seconds
+- [ ] Animates at 60 FPS
+- [ ] Handles all 9 outcomes expanded simultaneously
+- [ ] Zero console errors
+- [ ] Works on desktop + tablet landscape
+
+---
+
+## Post-Phase 1: V3.0 Research Track
+
+**V3.0 Goals (Months 3-6):**
+- Country-specific graphs (217 separate causal structures)
+- Intervention simulator backend (API: /simulate)
+- Confidence intervals on all edges
+- Temporal dynamics (lag structures, IRFs)
+
+**Phase 2-4 (Post-V3.0):**
+- Simulation Mode: Country selector, intervention sliders, scenario comparison
+- Academic Transparency: Stats panel, methodology page, data export
+- Advanced Features: Optimization mode, education mode, white-label
+
+---
+
+## Key Constants Reference
+
+```typescript
+// Domain Colors (9 outcomes)
+DOMAIN_COLORS = {
+  Health: '#E91E63',
+  Education: '#FF9800',
+  Economic: '#4CAF50',
+  Governance: '#9C27B0',
+  Environment: '#00BCD4',
+  Demographics: '#795548',
+  Security: '#F44336',
+  Development: '#3F51B5',
+  Research: '#009688'
+}
+
+// Ring Structure (6 rings)
+Ring 0: Root (1 node)
+Ring 1: Outcomes (9 nodes)
+Ring 2: Coarse Domains (45 nodes)
+Ring 3: Fine Domains (196 nodes)
+Ring 4: Groups (569 nodes)
+Ring 5: Indicators (1,763 nodes)
+
+// Sector Bands (for smart sector filling)
+RIGHT_BAND: 0° ±45° (90° total)
+LEFT_BAND: 180° ±45° (90° total)
+TOP_OVERFLOW: 90° ±22.5° (45° total)
+BOTTOM_OVERFLOW: 270° ±22.5° (45° total)
+```
