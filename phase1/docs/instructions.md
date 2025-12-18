@@ -71,10 +71,12 @@ User mental model:
 - [ ] ~~Click flash, spinner~~ (deferred - not critical)
 
 #### 2.4 Auto-Zoom on Expand ✅
-- [x] When user expands: smoothly zoom + pan to frame expanded subtree
-- [x] Target: expanded nodes fill ~70% of viewport (capped at 4x zoom)
-- [x] Duration: 500ms ease-in-out (cubic)
-- [x] On collapse: zoom out to show parent + siblings context (capped at 2x)
+- [x] When user expands: smoothly zoom + pan to frame entire branch (Ring 1 → leaves)
+- [x] Frames QoL center + entire subtree from Ring 1 ancestor
+- [x] Zooms out if needed to fit all nodes (10% padding)
+- [x] Duration: 400ms ease-out (cubic)
+- [x] On collapse: centers between root and collapsed node
+- [x] No camera change when expanding root (Ring 0)
 
 #### 2.5 Rich Tooltips (Partial) ✅
 - [x] Node tooltip: name, domain, subdomain, importance, rank, connections, children, driver/outcome status
@@ -83,42 +85,36 @@ User mental model:
 - [ ] ~~Edge tooltip~~ (deferred - need causal edges first)
 - [ ] ~~Smart positioning~~ (deferred - fixed position works well)
 
+#### 2.6 Text-Aware Spacing & Visibility ✅
+- [x] Visual footprint = max(node diameter, text extent) for spacing calculations
+- [x] Text boost system: small text (< 3px) boosted to 3-5px during single-branch exploration
+- [x] Boost factor scales: 1 branch = full boost, 5+ branches = no boost
+- [x] Ring-specific text orientation: horizontal (Ring 0-1), radial (Ring 2-5)
+- [x] Dynamic zoom visibility: labels visible when effectiveSize >= 3px
+- [x] JS controls all label opacity (CSS rules removed to prevent conflicts)
+- [x] Smart label wrapping: tries 1 line → 2 lines → 3 lines based on available space
+- [x] Ring 0-1 constant: importance-based sizing, bold, no boost, no wrapping
+- [x] Edge crossing fix: children constrained within parent's angular boundary
+
 ---
 
 ### Tier 3: Major Features (1 week each)
 **Goal:** Complete navigation and causal visualization
 
-#### 3.1 Smart Sector Filling (Plan Exists)
-**Priority order for expanded outcomes:**
-1. Right lateral band (0° ±45°) - First expanded outcomes go here
-2. Left lateral band (180° ±45°) - When right band is full
-3. Top sector (90°) - Overflow
-4. Bottom sector (270°) - Final overflow
-
-- [ ] Implement `assignExpandedOutcomeAngles()` function
-- [ ] Implement `fillBandsSequentially()` with constraint-based packing
-- [ ] Distribute collapsed outcomes in remaining angular space
-- [ ] Test with various subtree sizes
-
-#### 3.2 Search & Navigation
+#### 3.1 Search & Navigation
 - [ ] Autocomplete search bar (fuzzy match with Fuse.js)
 - [ ] Top 5 matches as you type
 - [ ] Jump behavior: expand path to node, zoom to frame it
 - [ ] Search by domain filter dropdown
 - [ ] Recent searches history (last 5)
 
-#### 3.3 Causal Edges in Global View
+#### 3.2 Causal Edges in Global View
 - [ ] Toggle: "Show Causal Edges" (checkbox, default OFF)
 - [ ] Style: thin (0.5px), translucent (0.15 opacity), dashed
 - [ ] Edge hover → highlight full path
 - [ ] Filter by edge strength slider (|β| > threshold)
 
-#### 3.4 Edge Bundling
-- [ ] Hierarchical edge bundling (Holten 2006)
-- [ ] Groups edges that flow through similar paths
-- [ ] Makes "data highways" visible
-
-#### 3.5 Sector Glow Backgrounds
+#### 3.3 Sector Glow Backgrounds
 - [ ] 9 outcome sectors get subtle radial gradient fills
 - [ ] Color: domain color at 0.08 opacity
 - [ ] Helps orient "which outcome am I looking at?"
@@ -247,9 +243,15 @@ Ring 3: Fine Domains (196 nodes)
 Ring 4: Groups (569 nodes)
 Ring 5: Indicators (1,763 nodes)
 
-// Sector Bands (for smart sector filling)
-RIGHT_BAND: 0° ±45° (90° total)
-LEFT_BAND: 180° ±45° (90° total)
-TOP_OVERFLOW: 90° ±22.5° (45° total)
-BOTTOM_OVERFLOW: 270° ±22.5° (45° total)
+// Text-Aware Spacing Constants
+MIN_READABLE_SIZE = 3      // Minimum font size for visibility
+MAX_BOOSTED_SIZE = 5       // Maximum boosted font size
+MIN_EFFECTIVE_SIZE = 3     // fontSize * zoom must exceed this
+AVG_CHAR_WIDTH_RATIO = 0.55  // For text width estimation
+
+// Text Multipliers by Ring
+Ring 0-2: 1.0 (full size)
+Ring 3: 0.85
+Ring 4: 0.70
+Ring 5: 0.35
 ```

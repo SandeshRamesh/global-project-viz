@@ -1,29 +1,10 @@
 /* Minimal styles for visualization */
 
-/* Zoom-based label visibility (CSS handles this, no JS iteration needed) */
-.graph-container.zoom-xs text.node-label[data-ring="2"],
-.graph-container.zoom-xs text.node-label[data-ring="3"],
-.graph-container.zoom-xs text.node-label[data-ring="4"],
-.graph-container.zoom-xs text.node-label[data-ring="5"] {
-  opacity: 0;
-}
-
-.graph-container.zoom-sm text.node-label[data-ring="3"],
-.graph-container.zoom-sm text.node-label[data-ring="4"],
-.graph-container.zoom-sm text.node-label[data-ring="5"] {
-  opacity: 0;
-}
-
-.graph-container.zoom-md text.node-label[data-ring="4"],
-.graph-container.zoom-md text.node-label[data-ring="5"] {
-  opacity: 0;
-}
-
-.graph-container.zoom-lg text.node-label[data-ring="5"] {
-  opacity: 0;
-}
-
-/* zoom-xl: all labels visible including Ring 5 */
+/*
+ * Label visibility is now controlled by JavaScript (dynamic based on font size and zoom)
+ * See updateLabelVisibility() in App.tsx
+ * CSS rules removed to prevent conflicts with JS-based visibility
+ */
 
 /* Loading spinner animation */
 @keyframes spin {
