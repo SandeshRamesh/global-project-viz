@@ -9,6 +9,8 @@
  * Only mathematical floors (device pixel awareness) are truly static.
  */
 
+import { debug } from '../utils/debug'
+
 /**
  * Context for viewport-aware calculations
  */
@@ -688,16 +690,16 @@ export class ViewportAwareLayout {
    */
   logParameters(): void {
     const values = this.getLayoutValues()
-    console.log('[ViewportAwareLayout] Parameters:')
-    console.log(`  Viewport: ${this.ctx.width}x${this.ctx.height} @ ${this.ctx.dpr}x DPR`)
-    console.log(`  Base unit: ${values.baseUnit.toFixed(2)}px`)
-    console.log(`  Readable unit: ${values.readableUnit.toFixed(2)}px`)
-    console.log(`  Node size: ${values.sizeRange.minRadius.toFixed(2)}px - ${values.sizeRange.maxRadius.toFixed(2)}px`)
-    console.log(`  Ring gap: ${values.ringGap.toFixed(2)}px`)
-    console.log(`  Inner radius: ${values.innerRadius.toFixed(2)}px`)
-    console.log(`  Spacing: ${values.baseSpacing.toFixed(2)}px - ${values.maxSpacing.toFixed(2)}px`)
-    console.log(`  Edge thickness: ${values.edgeBaseThickness.toFixed(2)}px (min: ${values.edgeMinThickness.toFixed(2)}px)`)
-    console.log(`  Text size: ${values.textMinSize.toFixed(2)}px - ${values.textMaxSize.toFixed(2)}px`)
+    debug.viewport('[ViewportAwareLayout] Parameters:')
+    debug.viewport(`  Viewport: ${this.ctx.width}x${this.ctx.height} @ ${this.ctx.dpr}x DPR`)
+    debug.viewport(`  Base unit: ${values.baseUnit.toFixed(2)}px`)
+    debug.viewport(`  Readable unit: ${values.readableUnit.toFixed(2)}px`)
+    debug.viewport(`  Node size: ${values.sizeRange.minRadius.toFixed(2)}px - ${values.sizeRange.maxRadius.toFixed(2)}px`)
+    debug.viewport(`  Ring gap: ${values.ringGap.toFixed(2)}px`)
+    debug.viewport(`  Inner radius: ${values.innerRadius.toFixed(2)}px`)
+    debug.viewport(`  Spacing: ${values.baseSpacing.toFixed(2)}px - ${values.maxSpacing.toFixed(2)}px`)
+    debug.viewport(`  Edge thickness: ${values.edgeBaseThickness.toFixed(2)}px (min: ${values.edgeMinThickness.toFixed(2)}px)`)
+    debug.viewport(`  Text size: ${values.textMinSize.toFixed(2)}px - ${values.textMaxSize.toFixed(2)}px`)
   }
 }
 

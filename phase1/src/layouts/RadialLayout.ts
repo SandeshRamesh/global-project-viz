@@ -12,6 +12,7 @@
  */
 
 import type { RawNodeV21 } from '../types'
+import { debug } from '../utils/debug'
 import type { NodeSizeRange } from './ViewportScales'
 
 export interface RingConfig {
@@ -424,19 +425,19 @@ function assignOutcomeAngles(
   }
 
   // Log assignment
-  console.log('[SECTOR FILLING] RIGHT-SIDE PRIORITY:')
-  console.log(`  Expanded: ${expanded.length} outcomes, positioned in ${toDeg(expandedPositioningSpace)} (compactness: ${ring1Compactness.toFixed(2)}), full extent: ${toDeg(expandedFullExtent)}`)
-  console.log(`  Collapsed: ${collapsed.length} outcomes filling remaining ${toDeg(remainingSpace)} (scale: ${collapsedScale.toFixed(2)}x)`)
+  debug.sector('[SECTOR FILLING] RIGHT-SIDE PRIORITY:')
+  debug.sector(`  Expanded: ${expanded.length} outcomes, positioned in ${toDeg(expandedPositioningSpace)} (compactness: ${ring1Compactness.toFixed(2)}), full extent: ${toDeg(expandedFullExtent)}`)
+  debug.sector(`  Collapsed: ${collapsed.length} outcomes filling remaining ${toDeg(remainingSpace)} (scale: ${collapsedScale.toFixed(2)}x)`)
 
   for (const outcome of expanded) {
     const angle = angles.get(outcome.id)!
     const extent = extents.get(outcome.id)!
-    console.log(`  [EXPANDED] ${outcome.id}: ${toDeg(angle)} (extent: ${toDeg(extent)})`)
+    debug.sector(`  [EXPANDED] ${outcome.id}: ${toDeg(angle)} (extent: ${toDeg(extent)})`)
   }
   for (const outcome of collapsed) {
     const angle = angles.get(outcome.id)!
     const extent = extents.get(outcome.id)!
-    console.log(`  [collapsed] ${outcome.id}: ${toDeg(angle)} (extent: ${toDeg(extent)})`)
+    debug.sector(`  [collapsed] ${outcome.id}: ${toDeg(angle)} (extent: ${toDeg(extent)})`)
   }
 
   return { angles, extents }
@@ -606,7 +607,7 @@ function calculateMinimumRequirements(
   })
 
   if (verbose && node.children.length > 0) {
-    console.log(
+    debug.layout(
       `[PASS 1] ${node.id} (ring ${ringIndex}): ` +
       `requires ${toDeg(node.minAngularExtent)} ` +
       `(own: ${toDeg(ownMinAngle)}, children: ${toDeg(totalChildRequirement)})`
@@ -662,7 +663,7 @@ function positionNode(
 
     // Log compression warnings
     if (allocation.compressionRatio < 0.95 && verbose) {
-      console.warn(
+      debug.layoutWarn(
         `[COMPRESSION] ${treeNode.id} (${allocation.nodeName}): ` +
         `required ${toDeg(allocation.required)}, ` +
         `allocated ${toDeg(angularExtent)} ` +
@@ -683,7 +684,7 @@ function positionNode(
   const excessSpace = angularExtent - totalMinimum
 
   if (verbose && treeNode.children.length > 1) {
-    console.log(
+    debug.layout(
       `[PASS 2] Distributing space in ${treeNode.id}: ` +
       `parent has ${toDeg(angularExtent)}, ` +
       `children need ${toDeg(totalMinimum)}, ` +
@@ -707,7 +708,7 @@ function positionNode(
     const compressionRatio = angularExtent / totalMinimum
     childExtents = childMinimums.map(min => min * compressionRatio)
 
-    console.warn(
+    debug.layoutWarn(
       `[OVERCROWDING] ${treeNode.id} (ring ${ringIndex}): ` +
       `${treeNode.children.length} children need ${toDeg(totalMinimum)} ` +
       `but only have ${toDeg(angularExtent)} ` +
@@ -862,7 +863,7 @@ function positionNodeWithSectorAwareness(
         layoutNode.children.push(childLayoutNode)
 
         if (verbose) {
-          console.log(
+          debug.sector(
             `[SECTOR] Positioned outcome ${child.id} at ${toDeg(targetAngle)} ` +
             `with extent ${toDeg(childExtent)}`
           )
@@ -1026,18 +1027,18 @@ function printAllocationSummary(): void {
   const compressed = allocations.filter(a => a.compressionRatio < 0.95 && a.compressionRatio > 0)
   const adequate = allocations.filter(a => a.compressionRatio >= 0.95)
 
-  console.log('\n=== Space Allocation Summary ===')
-  console.log(`Total nodes: ${allocations.length}`)
-  console.log(`Adequate space: ${adequate.length} (${(adequate.length / allocations.length * 100).toFixed(1)}%)`)
-  console.log(`Compressed: ${compressed.length} (${(compressed.length / allocations.length * 100).toFixed(1)}%)`)
+  debug.space('\n=== Space Allocation Summary ===')
+  debug.space(`Total nodes: ${allocations.length}`)
+  debug.space(`Adequate space: ${adequate.length} (${(adequate.length / allocations.length * 100).toFixed(1)}%)`)
+  debug.space(`Compressed: ${compressed.length} (${(compressed.length / allocations.length * 100).toFixed(1)}%)`)
 
   if (compressed.length > 0) {
-    console.log('\nMost compressed nodes (top 20):')
+    debug.space('\nMost compressed nodes (top 20):')
     compressed
       .sort((a, b) => a.compressionRatio - b.compressionRatio)
       .slice(0, 20)
       .forEach(allocation => {
-        console.log(
+        debug.space(
           `  Ring ${allocation.ring}: ${allocation.nodeId} (${allocation.nodeName.substring(0, 30)}): ` +
           `${(allocation.compressionRatio * 100).toFixed(1)}% ` +
           `(needed ${toDeg(allocation.required)}, got ${toDeg(allocation.allocated)})`
@@ -1045,7 +1046,7 @@ function printAllocationSummary(): void {
       })
 
     // Group compressions by ring
-    console.log('\nCompressions by ring:')
+    debug.space('\nCompressions by ring:')
     const byRing = new Map<number, number>()
     compressed.forEach(a => {
       byRing.set(a.ring, (byRing.get(a.ring) || 0) + 1)
@@ -1053,7 +1054,7 @@ function printAllocationSummary(): void {
     Array.from(byRing.entries())
       .sort((a, b) => a[0] - b[0])
       .forEach(([ring, count]) => {
-        console.log(`  Ring ${ring}: ${count} compressed nodes`)
+        debug.space(`  Ring ${ring}: ${count} compressed nodes`)
       })
   }
 }
@@ -1125,7 +1126,7 @@ export function computeRadialLayout(
   }
 
   // PASS 1: Bottom-up calculation of minimum requirements
-  if (verbose) console.log('\n=== PASS 1: Calculating minimum angular requirements ===')
+  if (verbose) debug.layout('\n=== PASS 1: Calculating minimum angular requirements ===')
   for (const root of roots) {
     calculateMinimumRequirements(root, 0, ringRadii, config.nodePadding, verbose)
   }
@@ -1133,12 +1134,12 @@ export function computeRadialLayout(
   // Log total requirement vs available
   const totalRootRequirement = roots.reduce((sum, r) => sum + r.minAngularExtent, 0)
   if (verbose) {
-    console.log(
+    debug.layout(
       `\nTotal minimum requirement: ${toDeg(totalRootRequirement)} ` +
       `(available: ${toDeg(config.totalAngle)})`
     )
     if (totalRootRequirement > config.totalAngle) {
-      console.warn(
+      debug.layoutWarn(
         `[WARNING] Total requirement exceeds available space by ${toDeg(totalRootRequirement - config.totalAngle)}!`
       )
     }
@@ -1177,7 +1178,7 @@ export function computeRadialLayout(
   // PASS 2: Top-down positioning (with sector-aware outcome placement)
   // ========================================================================
 
-  if (verbose) console.log('\n=== PASS 2: Allocating space (top-down) ===')
+  if (verbose) debug.layout('\n=== PASS 2: Allocating space (top-down) ===')
   const layoutNodeMap = new Map<string, LayoutNode>()
   const layoutNodes: LayoutNode[] = []
 
@@ -1502,27 +1503,27 @@ export function detectOverlaps(
 
   // Log overlap summary
   if (overlaps.length > 0) {
-    console.log('\n=== Overlap Detection Report ===')
-    console.log(`Total overlaps: ${overlaps.length}`)
+    debug.overlap('\n=== Overlap Detection Report ===')
+    debug.overlap(`Total overlaps: ${overlaps.length}`)
 
     // Group by ring
     const byRing = new Map<number, number>()
     overlaps.forEach(o => {
       byRing.set(o.ring, (byRing.get(o.ring) || 0) + 1)
     })
-    console.log('By ring:')
+    debug.overlap('By ring:')
     Array.from(byRing.entries())
       .sort((a, b) => a[0] - b[0])
       .forEach(([ring, count]) => {
-        console.log(`  Ring ${ring}: ${count} overlaps`)
+        debug.overlap(`  Ring ${ring}: ${count} overlaps`)
       })
 
-    console.log('\nWorst overlaps (top 10):')
+    debug.overlap('\nWorst overlaps (top 10):')
     overlaps
       .sort((a, b) => b.overlapAmount - a.overlapAmount)
       .slice(0, 10)
       .forEach(o => {
-        console.log(
+        debug.overlap(
           `  Ring ${o.ring}: ${o.node1} <-> ${o.node2}: ` +
           `overlap=${o.overlapAmount.toFixed(2)}px, ` +
           `distance=${o.distance.toFixed(2)}px, ` +

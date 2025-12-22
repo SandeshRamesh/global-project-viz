@@ -2,6 +2,7 @@ import { useEffect, useRef, useState, useCallback, useMemo } from 'react'
 import * as d3 from 'd3'
 import Fuse from 'fuse.js'
 import './styles/App.css'
+import { debug } from './utils/debug'
 import type {
   RawNodeV21,
   GraphDataV21,
@@ -206,7 +207,7 @@ function App() {
       viewportLayoutRef.current.updateContext({ width, height })
       setLayoutValues(viewportLayoutRef.current.getLayoutValues())
 
-      console.log('[Viewport Resize] New dimensions:', width, 'x', height)
+      debug.viewport('[Viewport Resize] New dimensions:', width, 'x', height)
       viewportLayoutRef.current.logParameters()
     }
 
@@ -456,6 +457,16 @@ function App() {
     const visibleIds = new Set(visibleNodes.map(n => n.id))
     return allEdges.filter(e => visibleIds.has(e.sourceId) && visibleIds.has(e.targetId))
   }, [allEdges, visibleNodes])
+
+  // Memoized map of nodes by ring for percentile calculations (avoids recreation in render)
+  const nodesByRingMemo = useMemo(() => {
+    const map = new Map<number, ExpandableNode[]>()
+    visibleNodes.forEach(n => {
+      if (!map.has(n.ring)) map.set(n.ring, [])
+      map.get(n.ring)!.push(n)
+    })
+    return map
+  }, [visibleNodes])
 
   // All nodes for search (derived from rawData, not just visible nodes)
   const searchableNodes = useMemo(() => {
@@ -725,7 +736,7 @@ function App() {
     const { computedRings } = layoutResult
 
     // Log computed ring radii
-    console.log('Dynamic ring radii:', dynamicRadii.map((r, i) =>
+    debug.layout('Dynamic ring radii:', dynamicRadii.map((r, i) =>
       `Ring ${i}: ${r.toFixed(0)}px`
     ).join(', '))
 
@@ -735,7 +746,7 @@ function App() {
     // Detect any overlaps after resolution
     const overlaps = detectOverlaps(layoutResult.nodes, computedRings, nodePadding)
     if (overlaps.length > 0) {
-      console.warn(`Found ${overlaps.length} overlapping node pairs after resolution:`, overlaps.slice(0, 10))
+      debug.layoutWarn(`Found ${overlaps.length} overlapping node pairs after resolution:`, overlaps.slice(0, 10))
     }
 
     // Compute layout statistics
@@ -861,14 +872,8 @@ function App() {
       return vLayout.isNodeFloored(importance)
     }
 
-    const nodesByRing = new Map<number, ExpandableNode[]>()
-    visibleNodes.forEach(n => {
-      if (!nodesByRing.has(n.ring)) nodesByRing.set(n.ring, [])
-      nodesByRing.get(n.ring)!.push(n)
-    })
-
     const getPercentileInRing = (node: ExpandableNode): number => {
-      const ringNodes = nodesByRing.get(node.ring) || []
+      const ringNodes = nodesByRingMemo.get(node.ring) || []
       if (ringNodes.length <= 1) return 1
       const sorted = ringNodes.map(n => n.importance).sort((a, b) => b - a)
       const rank = sorted.findIndex(imp => imp <= node.importance)
@@ -944,34 +949,47 @@ function App() {
     const nodeMap = new Map<string, ExpandableNode>()
     visibleNodes.forEach(n => nodeMap.set(n.id, n))
 
-    // === RING CIRCLES (static, recreate each time) ===
-    ringsLayer.selectAll('circle.ring-outline').remove()
-    ringsLayer.selectAll('text.ring-label').remove()
-
+    // === RING CIRCLES (data join pattern) ===
     const visibleRings = new Set(visibleNodes.map(n => n.ring))
-    computedRingsState.slice(1).forEach((ring, i) => {
-      const ringIndex = i + 1
-      if (!visibleRings.has(ringIndex)) return
+    const ringData = computedRingsState
+      .map((ring, i) => ({ ...ring, index: i }))
+      .slice(1)
+      .filter(ring => visibleRings.has(ring.index))
 
-      ringsLayer.append('circle')
-        .attr('class', 'ring-outline')
-        .attr('cx', 0)
-        .attr('cy', 0)
-        .attr('r', ring.radius)
-        .attr('fill', 'none')
-        .attr('stroke', '#e5e5e5')
-        .attr('stroke-width', 1.5)
+    // Ring outlines
+    ringsLayer.selectAll<SVGCircleElement, typeof ringData[0]>('circle.ring-outline')
+      .data(ringData, d => d.index)
+      .join(
+        enter => enter.append('circle')
+          .attr('class', 'ring-outline')
+          .attr('cx', 0)
+          .attr('cy', 0)
+          .attr('fill', 'none')
+          .attr('stroke', '#e5e5e5')
+          .attr('stroke-width', 1.5)
+          .attr('r', d => d.radius),
+        update => update.attr('r', d => d.radius),
+        exit => exit.remove()
+      )
 
-      ringsLayer.append('text')
-        .attr('class', 'ring-label')
-        .attr('x', 0)
-        .attr('y', -ring.radius - 12)
-        .attr('text-anchor', 'middle')
-        .attr('font-size', 12)
-        .attr('font-weight', 'bold')
-        .attr('fill', '#888')
-        .text(`${ring.label || ringConfigs[ringIndex]?.label || ''}`)
-    })
+    // Ring labels
+    ringsLayer.selectAll<SVGTextElement, typeof ringData[0]>('text.ring-label')
+      .data(ringData, d => d.index)
+      .join(
+        enter => enter.append('text')
+          .attr('class', 'ring-label')
+          .attr('x', 0)
+          .attr('text-anchor', 'middle')
+          .attr('font-size', 12)
+          .attr('font-weight', 'bold')
+          .attr('fill', '#888')
+          .attr('y', d => -d.radius - 12)
+          .text(d => d.label || ringConfigs[d.index]?.label || ''),
+        update => update
+          .attr('y', d => -d.radius - 12)
+          .text(d => d.label || ringConfigs[d.index]?.label || ''),
+        exit => exit.remove()
+      )
 
     // === GLOW CIRCLES for search highlight ===
     const highlightedNodes = visibleNodes.filter(n => highlightedPath.has(n.id))
@@ -1332,7 +1350,7 @@ function App() {
 
     // Compute label positions
     const labelPositions = new Map<string, { x: number; y: number; anchor: string; rotation: number; fontSize: number; lines: string[] }>()
-    console.log('=== RING 1 FONT SIZES ===')
+    debug.render('=== RING 1 FONT SIZES ===')
     for (const d of labelNodes) {
       const nodeSize = getSize(d)
       const importance = d.importance ?? 0
@@ -1351,7 +1369,7 @@ function App() {
         const ring1Max = 8 * scaleFactor
         fontSize = ring1Min + (ring1Max - ring1Min) * Math.sqrt(importance)
         // DEBUG: Log all Ring 1 font sizes
-        console.log(`  ${label}: ${fontSize.toFixed(1)}px (importance=${importance.toFixed(4)})`)
+        debug.render(`  ${label}: ${fontSize.toFixed(1)}px (importance=${importance.toFixed(4)})`)
       } else {
         // Ring 2+: Importance-based with boost
         const baseFontSize = vLayout.getFontSize(importance, d.ring)
@@ -1522,7 +1540,7 @@ function App() {
         return isLabelVisible(d.ring, pos.fontSize, currentScale) ? 1 : 0
       })
 
-  }, [visibleNodes, visibleEdges, computedRingsState, ringConfigs, expandedNodes, toggleExpansion, resetView, ringRadii, layoutValues, calculateInitialTransform, highlightedPath])
+  }, [visibleNodes, visibleEdges, computedRingsState, ringConfigs, expandedNodes, toggleExpansion, resetView, ringRadii, layoutValues, calculateInitialTransform, highlightedPath, nodesByRingMemo])
 
   // Fetch data once on mount
   useEffect(() => {
