@@ -175,7 +175,9 @@ function App() {
   const [showSearchResults, setShowSearchResults] = useState(false)
   const [domainFilter, setDomainFilter] = useState<string>('')
   const [recentSearches, setRecentSearches] = useState<string[]>([])
+  const [showRecentSearches, setShowRecentSearches] = useState(false)
   const searchInputRef = useRef<HTMLInputElement>(null)
+  const recentSearchesTimeoutRef = useRef<number | null>(null)
   const [highlightedPath, setHighlightedPath] = useState<Set<string>>(new Set())
 
   // Viewport-aware layout engine
@@ -1767,6 +1769,20 @@ function App() {
             onChange={(e) => handleSearch(e.target.value)}
             onFocus={() => {
               if (searchResults.length > 0) setShowSearchResults(true)
+              // Show recent searches on focus, auto-hide after 5 seconds
+              if (recentSearches.length > 0 && !searchQuery) {
+                setShowRecentSearches(true)
+                if (recentSearchesTimeoutRef.current) {
+                  clearTimeout(recentSearchesTimeoutRef.current)
+                }
+                recentSearchesTimeoutRef.current = window.setTimeout(() => {
+                  setShowRecentSearches(false)
+                }, 5000)
+              }
+            }}
+            onBlur={() => {
+              // Hide recent searches on blur (with small delay for click handling)
+              setTimeout(() => setShowRecentSearches(false), 200)
             }}
             placeholder="Search indicators... (/ or Ctrl+K)"
             style={{
@@ -1867,7 +1883,7 @@ function App() {
         )}
 
         {/* Recent searches */}
-        {!showSearchResults && !searchQuery && recentSearches.length > 0 && (
+        {!showSearchResults && !searchQuery && showRecentSearches && recentSearches.length > 0 && (
           <div style={{
             background: 'white', borderRadius: 8, marginTop: 4, padding: '8px 12px',
             boxShadow: '0 2px 8px rgba(0,0,0,0.1)', width: '100%'
