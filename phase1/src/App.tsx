@@ -1,5 +1,6 @@
 import { useEffect, useRef, useState, useCallback, useMemo } from 'react'
 import * as d3 from 'd3'
+import Fuse from 'fuse.js'
 import './styles/App.css'
 import type {
   RawNodeV21,
@@ -67,6 +68,18 @@ interface ExpandableNode extends PositionedNode {
   childIds: string[]
   hasChildren: boolean
   importance: number  // Normalized SHAP importance (0-1) for node sizing
+}
+
+/** Searchable node for fuzzy search (all 2,583 nodes) */
+interface SearchableNode {
+  id: string
+  label: string
+  domain: string
+  subdomain: string
+  ring: number
+  importance: number
+  parentId: string | null
+  hasChildren: boolean
 }
 
 const DOMAIN_COLORS: Record<string, string> = {
@@ -155,6 +168,15 @@ function App() {
   const [hoveredNode, setHoveredNode] = useState<ExpandableNode | null>(null)
   const [ringStats, setRingStats] = useState<Array<{ label: string; count: number; minDistance: number }>>([])
   const [fps, setFps] = useState<number>(0)
+
+  // Search state
+  const [searchQuery, setSearchQuery] = useState('')
+  const [searchResults, setSearchResults] = useState<SearchableNode[]>([])
+  const [showSearchResults, setShowSearchResults] = useState(false)
+  const [domainFilter, setDomainFilter] = useState<string>('')
+  const [recentSearches, setRecentSearches] = useState<string[]>([])
+  const searchInputRef = useRef<HTMLInputElement>(null)
+  const [highlightedPath, setHighlightedPath] = useState<Set<string>>(new Set())
 
   // Viewport-aware layout engine
   const viewportLayoutRef = useRef<ViewportAwareLayout | null>(null)
@@ -433,6 +455,152 @@ function App() {
     return allEdges.filter(e => visibleIds.has(e.sourceId) && visibleIds.has(e.targetId))
   }, [allEdges, visibleNodes])
 
+  // All nodes for search (derived from rawData, not just visible nodes)
+  const searchableNodes = useMemo(() => {
+    if (!rawData) return []
+    return rawData.nodes.map(n => ({
+      id: String(n.id),
+      label: n.node_type === 'root' ? 'Quality of Life' : n.label.replace(/_/g, ' '),
+      domain: n.domain || '',
+      subdomain: n.subdomain || '',
+      ring: n.layer,
+      importance: n.importance ?? 0,
+      parentId: n.parent ? String(n.parent) : null,
+      hasChildren: (n.children?.length || 0) > 0
+    }))
+  }, [rawData])
+
+  // Fuse.js index for fuzzy search (searches ALL nodes, not just visible)
+  const fuseIndex = useMemo(() => {
+    if (searchableNodes.length === 0) return null
+    return new Fuse(searchableNodes, {
+      keys: [
+        { name: 'label', weight: 0.7 },
+        { name: 'domain', weight: 0.2 },
+        { name: 'subdomain', weight: 0.1 }
+      ],
+      threshold: 0.4,
+      includeScore: true,
+      minMatchCharLength: 2
+    })
+  }, [searchableNodes])
+
+  // Search handler
+  const handleSearch = useCallback((query: string) => {
+    setSearchQuery(query)
+    if (!fuseIndex || query.length < 2) {
+      setSearchResults([])
+      setShowSearchResults(false)
+      return
+    }
+
+    let results = fuseIndex.search(query)
+
+    // Apply domain filter if set
+    if (domainFilter) {
+      results = results.filter(r => r.item.domain === domainFilter)
+    }
+
+    // Take top 5 results
+    const topResults = results.slice(0, 5).map(r => r.item)
+    setSearchResults(topResults)
+    setShowSearchResults(topResults.length > 0)
+  }, [fuseIndex, domainFilter])
+
+  // Get path from root to node (list of node IDs to expand)
+  const getPathToNode = useCallback((nodeId: string): string[] => {
+    const path: string[] = []
+    const nodeMap = new Map(searchableNodes.map(n => [n.id, n]))
+
+    let current = nodeMap.get(nodeId)
+    while (current && current.parentId) {
+      path.unshift(current.parentId)
+      current = nodeMap.get(current.parentId)
+    }
+    return path
+  }, [searchableNodes])
+
+  // Jump to node: expand path and zoom to frame
+  const jumpToNode = useCallback((node: SearchableNode) => {
+    // Add to recent searches (keep last 5, no duplicates)
+    setRecentSearches(prev => {
+      const filtered = prev.filter(s => s !== node.label)
+      return [node.label, ...filtered].slice(0, 5)
+    })
+
+    // Clear search
+    setSearchQuery('')
+    setSearchResults([])
+    setShowSearchResults(false)
+
+    // Get path from root to target node
+    const pathToExpand = getPathToNode(node.id)
+
+    // Calculate highlight path: from target node up to Ring 1 ancestor
+    // Include the target node + all ancestors up to and including Ring 1
+    const nodeMap = new Map(searchableNodes.map(n => [n.id, n]))
+    const highlightPath = new Set<string>()
+    highlightPath.add(node.id)
+
+    let current = nodeMap.get(node.id)
+    while (current && current.parentId) {
+      const parent = nodeMap.get(current.parentId)
+      if (parent) {
+        highlightPath.add(parent.id)
+        // Stop at Ring 1 (outcome level)
+        if (parent.ring <= 1) break
+      }
+      current = parent
+    }
+
+    // Expand all nodes in path first
+    setExpandedNodes(prev => {
+      const next = new Set(prev)
+      pathToExpand.forEach(id => next.add(id))
+      return next
+    })
+
+    // Set pending zoom to frame the target node
+    pendingZoomRef.current = { nodeId: node.id, action: 'expand' }
+
+    // Delay highlight to ensure nodes are rendered first
+    setTimeout(() => {
+      setHighlightedPath(highlightPath)
+    }, 350)
+  }, [getPathToNode, searchableNodes])
+
+  // Close search results when clicking outside
+  useEffect(() => {
+    const handleClickOutside = (e: MouseEvent) => {
+      const target = e.target as HTMLElement
+      if (!target.closest('.search-container')) {
+        setShowSearchResults(false)
+      }
+    }
+    document.addEventListener('click', handleClickOutside)
+    return () => document.removeEventListener('click', handleClickOutside)
+  }, [])
+
+  // Keyboard shortcut for search (Ctrl/Cmd + K or /)
+  useEffect(() => {
+    const handleKeyDown = (e: KeyboardEvent) => {
+      if (e.target instanceof HTMLInputElement || e.target instanceof HTMLTextAreaElement) return
+
+      if (e.key === '/' || ((e.ctrlKey || e.metaKey) && e.key === 'k')) {
+        e.preventDefault()
+        searchInputRef.current?.focus()
+      }
+
+      // Escape to close search
+      if (e.key === 'Escape') {
+        setShowSearchResults(false)
+        searchInputRef.current?.blur()
+      }
+    }
+    window.addEventListener('keydown', handleKeyDown)
+    return () => window.removeEventListener('keydown', handleKeyDown)
+  }, [])
+
   // Fetch data once on mount
   const fetchData = useCallback(async () => {
     setLoading(true)
@@ -631,6 +799,7 @@ function App() {
         .style('will-change', 'transform')
       // Create layer groups in correct z-order (first = back, last = front)
       g.append('g').attr('class', 'layer-rings')
+      g.append('g').attr('class', 'layer-glow')  // Glow layer for search highlights
       g.append('g').attr('class', 'layer-edges')
       g.append('g').attr('class', 'layer-nodes')
       g.append('g').attr('class', 'layer-labels')
@@ -638,6 +807,7 @@ function App() {
 
     // Get layer references
     const ringsLayer = g.select<SVGGElement>('g.layer-rings')
+    const glowLayer = g.select<SVGGElement>('g.layer-glow')
     const edgesLayer = g.select<SVGGElement>('g.layer-edges')
     const nodesLayer = g.select<SVGGElement>('g.layer-nodes')
     const labelsLayer = g.select<SVGGElement>('g.layer-labels')
@@ -800,6 +970,42 @@ function App() {
         .attr('fill', '#888')
         .text(`${ring.label || ringConfigs[ringIndex]?.label || ''}`)
     })
+
+    // === GLOW CIRCLES for search highlight ===
+    const highlightedNodes = visibleNodes.filter(n => highlightedPath.has(n.id))
+    const glowSelection = glowLayer.selectAll<SVGCircleElement, ExpandableNode>('circle.glow')
+      .data(highlightedNodes, d => d.id)
+
+    // Remove old glows with fade out
+    glowSelection.exit()
+      .transition()
+      .duration(200)
+      .attr('opacity', 0)
+      .remove()
+
+    // Update existing glows (for rotation/movement)
+    const glowScale = 1.25  // 25% larger than node
+    glowSelection
+      .attr('cx', d => d.x)
+      .attr('cy', d => d.y)
+      .attr('r', d => getSize(d) * glowScale)
+
+    // Add new glows - tighter ring around node
+    glowSelection.enter()
+      .append('circle')
+      .attr('class', 'glow')
+      .attr('cx', d => d.x)
+      .attr('cy', d => d.y)
+      .attr('r', d => getSize(d) * glowScale)
+      .attr('fill', 'none')
+      .attr('stroke', d => DOMAIN_COLORS[d.semanticPath.domain] || '#9E9E9E')
+      .attr('stroke-width', d => Math.max(1.5, getSize(d) * 0.15))  // Stroke scales with node
+      .attr('opacity', 0)
+      .style('filter', 'blur(2px)')
+      .style('pointer-events', 'none')
+      .transition()
+      .duration(300)
+      .attr('opacity', 0.8)
 
     // === EDGES with enter/update/exit ===
     const edgeKey = (d: StructuralEdge) => `${d.sourceId}-${d.targetId}`
@@ -964,6 +1170,15 @@ function App() {
             }
           }
         }
+        // Clear highlight when clicking any node
+        if (highlightedPath.size > 0) {
+          setHighlightedPath(new Set())
+        }
+      } else {
+        // Clicked on background - clear highlight
+        if (highlightedPath.size > 0) {
+          setHighlightedPath(new Set())
+        }
       }
     })
     .on('mouseenter', (event) => {
@@ -1115,6 +1330,7 @@ function App() {
 
     // Compute label positions
     const labelPositions = new Map<string, { x: number; y: number; anchor: string; rotation: number; fontSize: number; lines: string[] }>()
+    console.log('=== RING 1 FONT SIZES ===')
     for (const d of labelNodes) {
       const nodeSize = getSize(d)
       const importance = d.importance ?? 0
@@ -1132,6 +1348,8 @@ function App() {
         const ring1Min = 4 * scaleFactor
         const ring1Max = 8 * scaleFactor
         fontSize = ring1Min + (ring1Max - ring1Min) * Math.sqrt(importance)
+        // DEBUG: Log all Ring 1 font sizes
+        console.log(`  ${label}: ${fontSize.toFixed(1)}px (importance=${importance.toFixed(4)})`)
       } else {
         // Ring 2+: Importance-based with boost
         const baseFontSize = vLayout.getFontSize(importance, d.ring)
@@ -1302,7 +1520,7 @@ function App() {
         return isLabelVisible(d.ring, pos.fontSize, currentScale) ? 1 : 0
       })
 
-  }, [visibleNodes, visibleEdges, computedRingsState, ringConfigs, expandedNodes, toggleExpansion, resetView, ringRadii, layoutValues, calculateInitialTransform])
+  }, [visibleNodes, visibleEdges, computedRingsState, ringConfigs, expandedNodes, toggleExpansion, resetView, ringRadii, layoutValues, calculateInitialTransform, highlightedPath])
 
   // Fetch data once on mount
   useEffect(() => {
@@ -1525,15 +1743,152 @@ function App() {
 
   return (
     <div style={{ width: '100vw', height: '100vh', overflow: 'hidden', background: '#fafafa' }}>
-      <div style={{
+      {/* Search Bar */}
+      <div className="search-container" style={{
         position: 'absolute', top: 10, left: '50%', transform: 'translateX(-50%)',
-        background: 'white', padding: '10px 20px', borderRadius: 4,
-        boxShadow: '0 2px 4px rgba(0,0,0,0.1)', zIndex: 100
+        zIndex: 100, display: 'flex', flexDirection: 'column', alignItems: 'center'
       }}>
-        <h2 style={{ margin: 0, fontSize: 16 }}>Quality of Life - Semantic Hierarchy</h2>
-        <div style={{ fontSize: 11, color: '#666', textAlign: 'center', marginTop: 4 }}>
-          Click nodes to expand • Hover for details
+        <div style={{
+          display: 'flex', alignItems: 'center', gap: 8,
+          background: 'white', padding: '8px 12px', borderRadius: 8,
+          boxShadow: '0 2px 8px rgba(0,0,0,0.12)', minWidth: 400
+        }}>
+          {/* Search icon */}
+          <svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="#888" strokeWidth="2">
+            <circle cx="11" cy="11" r="8" />
+            <path d="M21 21l-4.35-4.35" />
+          </svg>
+
+          {/* Search input */}
+          <input
+            ref={searchInputRef}
+            type="text"
+            value={searchQuery}
+            onChange={(e) => handleSearch(e.target.value)}
+            onFocus={() => {
+              if (searchResults.length > 0) setShowSearchResults(true)
+            }}
+            placeholder="Search indicators... (/ or Ctrl+K)"
+            style={{
+              flex: 1, border: 'none', outline: 'none', fontSize: 14,
+              background: 'transparent', minWidth: 200
+            }}
+          />
+
+          {/* Domain filter dropdown */}
+          <select
+            value={domainFilter}
+            onChange={(e) => {
+              setDomainFilter(e.target.value)
+              if (searchQuery.length >= 2) handleSearch(searchQuery)
+            }}
+            style={{
+              border: '1px solid #ddd', borderRadius: 4, padding: '4px 8px',
+              fontSize: 12, background: 'white', cursor: 'pointer', color: '#555'
+            }}
+          >
+            <option value="">All domains</option>
+            {Object.keys(DOMAIN_COLORS).map(domain => (
+              <option key={domain} value={domain}>{domain}</option>
+            ))}
+          </select>
+
+          {/* Clear button */}
+          {searchQuery && (
+            <button
+              onClick={() => {
+                setSearchQuery('')
+                setSearchResults([])
+                setShowSearchResults(false)
+              }}
+              style={{
+                background: 'none', border: 'none', cursor: 'pointer',
+                padding: 4, display: 'flex', alignItems: 'center'
+              }}
+            >
+              <svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="#888" strokeWidth="2">
+                <path d="M18 6L6 18M6 6l12 12" />
+              </svg>
+            </button>
+          )}
         </div>
+
+        {/* Search results dropdown */}
+        {showSearchResults && searchResults.length > 0 && (
+          <div style={{
+            background: 'white', borderRadius: 8, marginTop: 4,
+            boxShadow: '0 4px 12px rgba(0,0,0,0.15)', width: '100%',
+            maxHeight: 300, overflow: 'auto'
+          }}>
+            {searchResults.map((node, i) => (
+              <div
+                key={node.id}
+                onClick={() => jumpToNode(node)}
+                style={{
+                  padding: '10px 14px', cursor: 'pointer',
+                  borderBottom: i < searchResults.length - 1 ? '1px solid #eee' : 'none',
+                  display: 'flex', alignItems: 'center', gap: 10
+                }}
+                onMouseEnter={(e) => e.currentTarget.style.background = '#f5f5f5'}
+                onMouseLeave={(e) => e.currentTarget.style.background = 'white'}
+              >
+                {/* Domain color dot */}
+                <div style={{
+                  width: 10, height: 10, borderRadius: '50%',
+                  backgroundColor: DOMAIN_COLORS[node.domain] || '#9E9E9E',
+                  flexShrink: 0
+                }} />
+
+                <div style={{ flex: 1, minWidth: 0 }}>
+                  <div style={{ fontSize: 13, fontWeight: 500, color: '#333' }}>
+                    {node.label}
+                  </div>
+                  <div style={{ fontSize: 11, color: '#888', marginTop: 2 }}>
+                    {node.domain}
+                    {node.subdomain && node.subdomain !== node.domain && (
+                      <> &rsaquo; {node.subdomain}</>
+                    )}
+                    <span style={{ marginLeft: 8, color: '#aaa' }}>
+                      Ring {node.ring}
+                    </span>
+                  </div>
+                </div>
+
+                {/* Importance badge */}
+                <div style={{
+                  fontSize: 10, padding: '2px 6px', borderRadius: 4,
+                  background: '#f0f0f0', color: '#666'
+                }}>
+                  {(node.importance * 100).toFixed(1)}%
+                </div>
+              </div>
+            ))}
+          </div>
+        )}
+
+        {/* Recent searches */}
+        {!showSearchResults && !searchQuery && recentSearches.length > 0 && (
+          <div style={{
+            background: 'white', borderRadius: 8, marginTop: 4, padding: '8px 12px',
+            boxShadow: '0 2px 8px rgba(0,0,0,0.1)', width: '100%'
+          }}>
+            <div style={{ fontSize: 10, color: '#888', marginBottom: 6 }}>Recent searches</div>
+            <div style={{ display: 'flex', flexWrap: 'wrap', gap: 6 }}>
+              {recentSearches.map((term, i) => (
+                <button
+                  key={i}
+                  onClick={() => handleSearch(term)}
+                  style={{
+                    background: '#f5f5f5', border: 'none', borderRadius: 4,
+                    padding: '4px 8px', fontSize: 11, cursor: 'pointer', color: '#555'
+                  }}
+                >
+                  {term}
+                </button>
+              ))}
+            </div>
+          </div>
+        )}
       </div>
 
       {/* Loading Screen */}

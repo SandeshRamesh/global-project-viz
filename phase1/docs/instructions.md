@@ -101,23 +101,14 @@ User mental model:
 ### Tier 3: Major Features (1 week each)
 **Goal:** Complete navigation and causal visualization
 
-#### 3.1 Search & Navigation
-- [ ] Autocomplete search bar (fuzzy match with Fuse.js)
-- [ ] Top 5 matches as you type
-- [ ] Jump behavior: expand path to node, zoom to frame it
-- [ ] Search by domain filter dropdown
-- [ ] Recent searches history (last 5)
-
-#### 3.2 Causal Edges in Global View
-- [ ] Toggle: "Show Causal Edges" (checkbox, default OFF)
-- [ ] Style: thin (0.5px), translucent (0.15 opacity), dashed
-- [ ] Edge hover → highlight full path
-- [ ] Filter by edge strength slider (|β| > threshold)
-
-#### 3.3 Sector Glow Backgrounds
-- [ ] 9 outcome sectors get subtle radial gradient fills
-- [ ] Color: domain color at 0.08 opacity
-- [ ] Helps orient "which outcome am I looking at?"
+#### 3.1 Search & Navigation ✅
+- [x] Autocomplete search bar (fuzzy match with Fuse.js)
+- [x] Top 5 matches as you type
+- [x] Jump behavior: expand path to node, zoom to frame it
+- [x] Search by domain filter dropdown
+- [x] Recent searches history (last 5)
+- [x] Path highlight glow: searched node + ancestors up to Ring 1 get proportional glow effect
+- [x] Keyboard shortcuts: `/` or `Ctrl+K` to focus, `Escape` to close
 
 ---
 

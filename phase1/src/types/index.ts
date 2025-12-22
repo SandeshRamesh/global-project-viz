@@ -70,6 +70,12 @@ export interface StructuralEdge {
   targetRing: number
 }
 
+export interface CausalEdge {
+  sourceId: string
+  targetId: string
+  weight: number  // β coefficient (effect size)
+}
+
 export interface RingConfig {
   radius: number
   label: string
