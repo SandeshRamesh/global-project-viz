@@ -120,34 +120,41 @@ User mental model:
 
 ---
 
-### Tier 4: Local View (2 weeks)
+### Tier 4: Local View ✅
 **Goal:** Users can explore causal pathways in detail
 
-#### 4.1 Layout Implementation
-- [ ] Sugiyama layered layout (hierarchical DAG)
-- [ ] Horizontal layout (left-to-right flow)
-- [ ] Layer 0: Selected node (root of local view)
-- [ ] Layer 1-3+: Parents and grandparents (recursive)
-- [ ] Node sizing: same SHAP-based sizing as Global View
+#### 4.1 Layout Implementation ✅
+- [x] Vertical 3-layer layout (Inputs → Target → Outputs)
+- [x] Circular nodes (unified visual language with Global View)
+- [x] Importance-based sizing (area-proportional scaling)
+- [x] Beta-sorted positioning (strongest causes first)
+- [x] Collision detection for variable-radius circles
 
-#### 4.2 Edge Rendering
-- [ ] Thickness = effect size (β coefficient magnitude)
-- [ ] Color = sign (green = positive, red = negative, gray = neutral)
-- [ ] Style: Bezier curves (smooth flow)
-- [ ] Filter by effect size (hide |β| < 0.1 by default)
+#### 4.2 Edge Rendering ✅
+- [x] Thickness = beta magnitude (1.5-5px range)
+- [x] Color = sign (green = positive, red = negative)
+- [x] Bezier curves (smooth vertical flow)
+- [x] Auto-adjusted threshold (~6 nodes visible)
 
-#### 4.3 Local View Interactions
-- [ ] Click node → make it new root
-- [ ] Breadcrumb navigation (Root > Outcome > Domain > ... > Current)
-- [ ] "Show in Global View" button
-- [ ] Collapse distant nodes (+N more button)
-- [ ] Filter by effect size slider
+#### 4.3 Visual Integration ✅
+- [x] Circular nodes match Global View appearance
+- [x] Cyan glow in Global View highlights Local View nodes
+- [x] Domain-colored outlines consistent across views
+- [x] Labels below circles with truncation for long names
 
-#### 4.4 View Switching
-- [ ] Toggle button: Global ↔ Local (top nav)
-- [ ] Preserves selected node when switching
-- [ ] Smooth slide transition (500ms)
-- [ ] URL sync (?view=local&node=NODE_ID)
+#### 4.4 Interactions ✅
+- [x] Double-click to add/navigate targets
+- [x] Remove button (× on targets at 45° angle)
+- [x] Zoom/pan support with state persistence
+- [x] Beta threshold slider
+- [x] Hover tooltips with beta values
+- [x] Invisible hover area for easier targeting
+
+#### 4.5 View Switching ✅
+- [x] Toggle tabs: Global ↔ Local (top nav)
+- [x] Keyboard shortcuts: G (Global), L (Local), R (Reset)
+- [x] Target count badge on Local tab
+- [ ] URL sync (?view=local&node=NODE_ID) - deferred
 
 ---
 
@@ -187,10 +194,10 @@ User mental model:
 - [x] Expand any outcome to see its full indicator tree
 - [x] Zoom and pan to explore dense areas
 - [x] Search for any indicator by name
-- [ ] Switch to Local View to see causal pathways *(Tier 4)*
+- [x] Switch to Local View to see causal pathways
 - [x] Hover nodes to see detailed stats
 - [x] Auto-frame on expand (camera follows focus)
-- [ ] Navigate breadcrumbs *(Tier 4 - Local View feature)*
+- [x] See cyan glow on nodes in Local View when in Global View
 - [ ] Share links (URL preserves view state) *(Testing & Polish)*
 
 **System Performs:**

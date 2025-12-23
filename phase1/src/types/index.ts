@@ -80,3 +80,48 @@ export interface RingConfig {
   radius: number
   label: string
 }
+
+// ============================================
+// Local View Types
+// ============================================
+
+/** View mode for the application */
+export type ViewMode = 'global' | 'local' | 'split'
+
+/** A node in the Local View */
+export interface LocalViewNode {
+  id: string
+  label: string
+  sector: string        // Ring 1 ancestor (outcome category)
+  sectorColor: string   // Domain color for the sector
+  ring: number
+  importance: number
+  isTarget: boolean     // Is this a selected target node?
+  isInput: boolean      // Is this an input (cause) to a target?
+  isOutput: boolean     // Is this an output (effect) of a target?
+}
+
+/** A causal edge in the Local View */
+export interface LocalViewEdge {
+  source: string
+  target: string
+  beta: number          // Effect size (β coefficient)
+  sourceSector: string  // Sector of source node
+  targetSector: string  // Sector of target node
+}
+
+/** Aggregated data for Local View */
+export interface LocalViewData {
+  targets: LocalViewNode[]
+  inputs: LocalViewNode[]
+  outputs: LocalViewNode[]
+  edges: LocalViewEdge[]
+}
+
+/** State for Local View */
+export interface LocalViewState {
+  targetIds: string[]           // Selected target node IDs
+  betaThreshold: number         // Filter threshold (default: 0.5)
+  expandedSectors: Set<string>  // Which sector groups are expanded
+  sectorFilter: string[]        // Filter by sectors (empty = all)
+}

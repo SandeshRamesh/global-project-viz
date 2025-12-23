@@ -7,8 +7,12 @@ import type {
   RawNodeV21,
   GraphDataV21,
   PositionedNode,
-  StructuralEdge
+  StructuralEdge,
+  ViewMode
 } from './types'
+import { ViewTabs } from './components/ViewTabs'
+import { LocalView } from './components/LocalView'
+import { getCausalEdges } from './utils/causalEdges'
 import {
   computeRadialLayout,
   detectOverlaps,
@@ -155,6 +159,8 @@ function App() {
   const zoomRef = useRef<d3.ZoomBehavior<SVGSVGElement, unknown> | null>(null)
   const currentTransformRef = useRef<d3.ZoomTransform | null>(null)
   const prevVisibleNodeIdsRef = useRef<Set<string>>(new Set())
+  const prevViewModeForVizRef = useRef<ViewMode>('global')  // Track view mode changes in visualization
+  const prevSplitRatioRef = useRef<number>(0.67)  // Track split ratio changes
   const nodePositionsRef = useRef<Map<string, { x: number; y: number; parentId: string | null }>>(new Map())
   const [loading, setLoading] = useState(true)
   const [error, setError] = useState<string | null>(null)
@@ -180,6 +186,62 @@ function App() {
   const searchInputRef = useRef<HTMLInputElement>(null)
   const recentSearchesTimeoutRef = useRef<number | null>(null)
   const [highlightedPath, setHighlightedPath] = useState<Set<string>>(new Set())
+
+  // View mode state (Global vs Local)
+  const [viewMode, setViewMode] = useState<ViewMode>('global')
+  const [localViewTargets, setLocalViewTargets] = useState<string[]>([])
+  const [localViewBetaThreshold, setLocalViewBetaThreshold] = useState(0.5)  // Synced from LocalView
+  const [splitRatio, setSplitRatio] = useState(0.67) // 0-1, percentage for left pane (2/3 global, 1/3 local)
+  const isDraggingRef = useRef(false)
+
+  // Handle split divider drag
+  const handleDividerMouseDown = useCallback((e: React.MouseEvent) => {
+    e.preventDefault()
+    isDraggingRef.current = true
+    document.body.style.cursor = 'col-resize'
+    document.body.style.userSelect = 'none'
+
+    const handleMouseMove = (moveEvent: MouseEvent) => {
+      if (!isDraggingRef.current) return
+      const container = document.querySelector('.split-container') as HTMLElement
+      if (!container) return
+      const rect = container.getBoundingClientRect()
+      const newRatio = Math.max(0.2, Math.min(0.8, (moveEvent.clientX - rect.left) / rect.width))
+      setSplitRatio(newRatio)
+    }
+
+    const handleMouseUp = () => {
+      isDraggingRef.current = false
+      document.body.style.cursor = ''
+      document.body.style.userSelect = ''
+      document.removeEventListener('mousemove', handleMouseMove)
+      document.removeEventListener('mouseup', handleMouseUp)
+    }
+
+    document.addEventListener('mousemove', handleMouseMove)
+    document.addEventListener('mouseup', handleMouseUp)
+  }, [])
+
+  // Add a node to Local View targets
+  const addToLocalView = useCallback((nodeId: string) => {
+    setLocalViewTargets(prev => {
+      if (prev.includes(nodeId)) return prev
+      return [...prev, nodeId]
+    })
+    // Default to split view when adding a node (shows both views)
+    setViewMode('split')
+  }, [])
+
+  // Remove a node from Local View targets
+  const removeFromLocalView = useCallback((nodeId: string) => {
+    setLocalViewTargets(prev => prev.filter(id => id !== nodeId))
+  }, [])
+
+  // Clear all Local View targets
+  const clearLocalViewTargets = useCallback(() => {
+    setLocalViewTargets([])
+    setViewMode('global')
+  }, [])
 
   // Viewport-aware layout engine
   const viewportLayoutRef = useRef<ViewportAwareLayout | null>(null)
@@ -249,6 +311,12 @@ function App() {
   // Raw data (fetched once, cached)
   const [rawData, setRawData] = useState<GraphDataV21 | null>(null)
 
+  // Memoized node lookup map for Local View
+  const nodeByIdMap = useMemo(() => {
+    if (!rawData) return new Map<string, RawNodeV21>()
+    return new Map(rawData.nodes.map(n => [String(n.id), n]))
+  }, [rawData])
+
   // All nodes from layout (stored for filtering)
   const [allNodes, setAllNodes] = useState<ExpandableNode[]>([])
   const [allEdges, setAllEdges] = useState<StructuralEdge[]>([])
@@ -304,49 +372,44 @@ function App() {
     setExpandedNodes(new Set())
   }, [])
 
-  // Calculate initial zoom transform to fit content
-  const calculateInitialTransform = useCallback((nodes: ExpandableNode[]) => {
-    const width = window.innerWidth
-    const height = window.innerHeight
-    const nodesWithPosition = nodes.filter(n => n.x !== 0 || n.y !== 0)
-    const maxRadius = nodesWithPosition.length > 0
-      ? Math.max(...nodesWithPosition.map(n => Math.sqrt(n.x * n.x + n.y * n.y)))
-      : 100
-    const scale = Math.min(width, height) / (Math.max(maxRadius * 2.5, 200))
-    return d3.zoomIdentity.translate(width / 2, height / 2).scale(scale)
-  }, [])
+  // Calculate initial zoom transform to fit content tightly
+  const calculateInitialTransform = useCallback((nodes: ExpandableNode[], containerWidth?: number, containerHeight?: number) => {
+    // Use provided dimensions or calculate from viewMode and splitRatio
+    const fullWidth = window.innerWidth
+    const fullHeight = window.innerHeight
+    const width = containerWidth ?? (viewMode === 'split' ? fullWidth * splitRatio : fullWidth)
+    const height = containerHeight ?? fullHeight
 
-  // Reset view: collapse all and reset zoom to initial state
-  const resetView = useCallback(() => {
-    // Collapse all nodes
-    setExpandedNodes(new Set())
-    // Clear stored transform so next render calculates initial zoom
-    currentTransformRef.current = null
-    // If we have the zoom behavior and SVG, programmatically reset
-    if (zoomRef.current && svgRef.current) {
-      const svg = d3.select(svgRef.current)
-      // Calculate initial zoom for collapsed state (just root node at origin)
-      const rootOnly = allNodes.filter(n => n.ring === 0)
-      const initialTransform = calculateInitialTransform(rootOnly)
-      svg.transition().duration(300).call(zoomRef.current.transform, initialTransform)
-    }
-  }, [allNodes, calculateInitialTransform])
+    // Calculate bounding box of all nodes (including root at 0,0)
+    const allXs = nodes.map(n => n.x)
+    const allYs = nodes.map(n => n.y)
 
-  // Keyboard shortcuts for reset view (R or Home)
-  useEffect(() => {
-    const handleKeyDown = (e: KeyboardEvent) => {
-      // Ignore if user is typing in an input
-      if (e.target instanceof HTMLInputElement || e.target instanceof HTMLTextAreaElement) return
-
-      if (e.key === 'r' || e.key === 'R' || e.key === 'Home') {
-        e.preventDefault()
-        resetView()
-      }
+    if (allXs.length === 0) {
+      return d3.zoomIdentity.translate(width / 2, height / 2).scale(1)
     }
 
-    window.addEventListener('keydown', handleKeyDown)
-    return () => window.removeEventListener('keydown', handleKeyDown)
-  }, [resetView])
+    const boundsMinX = Math.min(...allXs)
+    const boundsMaxX = Math.max(...allXs)
+    const boundsMinY = Math.min(...allYs)
+    const boundsMaxY = Math.max(...allYs)
+
+    const boundsWidth = Math.max(boundsMaxX - boundsMinX, 50)
+    const boundsHeight = Math.max(boundsMaxY - boundsMinY, 50)
+
+    const centerX = (boundsMinX + boundsMaxX) / 2
+    const centerY = (boundsMinY + boundsMaxY) / 2
+
+    // Tight padding (5% margin) to fill the screen
+    const padding = 0.05
+    const scaleX = width * (1 - 2 * padding) / boundsWidth
+    const scaleY = height * (1 - 2 * padding) / boundsHeight
+    const scale = Math.min(scaleX, scaleY, 3) // Cap at 3x zoom
+
+    const translateX = width / 2 - centerX * scale
+    const translateY = height / 2 - centerY * scale
+
+    return d3.zoomIdentity.translate(translateX, translateY).scale(scale)
+  }, [viewMode, splitRatio])
 
   // FPS counter (dev mode only)
   useEffect(() => {
@@ -467,6 +530,126 @@ function App() {
     })
     return map
   }, [visibleNodes])
+
+  // Compute all node IDs visible in Local View (targets + inputs + outputs)
+  // Used for glow highlighting in Global View
+  // Track node roles for glow colors: target=cyan, input=orange, output=purple
+  const localViewNodeRoles = useMemo(() => {
+    const roles = new Map<string, 'target' | 'input' | 'output'>()
+    if (localViewTargets.length === 0 || !rawData) return roles
+
+    const causalEdges = getCausalEdges(rawData.edges)
+
+    for (const targetId of localViewTargets) {
+      roles.set(targetId, 'target')
+
+      // Add input nodes (sources of edges pointing to target)
+      causalEdges
+        .filter(e => e.target === targetId && Math.abs(e.beta) >= localViewBetaThreshold)
+        .forEach(e => {
+          if (!roles.has(e.source)) roles.set(e.source, 'input')
+        })
+
+      // Add output nodes (targets of edges from target)
+      causalEdges
+        .filter(e => e.source === targetId && Math.abs(e.beta) >= localViewBetaThreshold)
+        .forEach(e => {
+          if (!roles.has(e.target)) roles.set(e.target, 'output')
+        })
+    }
+
+    return roles
+  }, [localViewTargets, rawData, localViewBetaThreshold])
+
+  // Flat set of all Local View node IDs (for filtering)
+  const localViewNodeIds = useMemo(() => {
+    return new Set(localViewNodeRoles.keys())
+  }, [localViewNodeRoles])
+
+  // Reset view: fit to show all highlighted nodes (Local View nodes) or collapse if none
+  const resetView = useCallback(() => {
+    if (!zoomRef.current || !svgRef.current) return
+
+    const svg = d3.select(svgRef.current)
+    const width = viewMode === 'split' ? window.innerWidth * splitRatio : window.innerWidth
+    const height = window.innerHeight
+
+    // If we have Local View nodes highlighted, fit to show them all
+    if (localViewNodeIds.size > 0) {
+      // Get all highlighted nodes that are currently visible
+      const highlightedNodes = visibleNodes.filter(n => localViewNodeIds.has(n.id))
+
+      if (highlightedNodes.length > 0) {
+        // Calculate bounding box of highlighted nodes + root (0,0)
+        const allXs = highlightedNodes.map(n => n.x)
+        const allYs = highlightedNodes.map(n => n.y)
+
+        const boundsMinX = Math.min(0, ...allXs)
+        const boundsMaxX = Math.max(0, ...allXs)
+        const boundsMinY = Math.min(0, ...allYs)
+        const boundsMaxY = Math.max(0, ...allYs)
+
+        const boundsWidth = boundsMaxX - boundsMinX
+        const boundsHeight = boundsMaxY - boundsMinY
+
+        // Calculate center
+        const centerX = (boundsMinX + boundsMaxX) / 2
+        const centerY = (boundsMinY + boundsMaxY) / 2
+
+        // Calculate scale to fit with tight padding (5% margin) to fill screen
+        const padding = 0.05
+        const scaleX = width * (1 - 2 * padding) / Math.max(boundsWidth, 1)
+        const scaleY = height * (1 - 2 * padding) / Math.max(boundsHeight, 1)
+        const fitScale = Math.min(scaleX, scaleY, 3) // Cap at 3x zoom
+
+        const newX = width / 2 - centerX * fitScale
+        const newY = height / 2 - centerY * fitScale
+        const newTransform = d3.zoomIdentity.translate(newX, newY).scale(fitScale)
+
+        svg.transition().duration(300).call(zoomRef.current.transform, newTransform)
+        currentTransformRef.current = newTransform
+        return
+      }
+    }
+
+    // No highlighted nodes - collapse all and zoom to root
+    setExpandedNodes(new Set())
+    currentTransformRef.current = null
+    const rootOnly = allNodes.filter(n => n.ring === 0)
+    const initialTransform = calculateInitialTransform(rootOnly)
+    svg.transition().duration(300).call(zoomRef.current.transform, initialTransform)
+  }, [allNodes, calculateInitialTransform, localViewNodeIds, visibleNodes, viewMode, splitRatio])
+
+  // Keyboard shortcuts for reset view (R or Home) and view switching (G, L, S)
+  useEffect(() => {
+    const handleKeyDown = (e: KeyboardEvent) => {
+      // Ignore if user is typing in an input
+      if (e.target instanceof HTMLInputElement || e.target instanceof HTMLTextAreaElement) return
+
+      if (e.key === 'r' || e.key === 'R' || e.key === 'Home') {
+        e.preventDefault()
+        resetView()
+      } else if (e.key === 'g' || e.key === 'G') {
+        e.preventDefault()
+        setViewMode('global')
+      } else if (e.key === 'l' || e.key === 'L') {
+        e.preventDefault()
+        // Only switch to local if there are targets
+        if (localViewTargets.length > 0) {
+          setViewMode('local')
+        }
+      } else if (e.key === 's' || e.key === 'S') {
+        e.preventDefault()
+        // Only switch to split if there are targets
+        if (localViewTargets.length > 0) {
+          setViewMode('split')
+        }
+      }
+    }
+
+    window.addEventListener('keydown', handleKeyDown)
+    return () => window.removeEventListener('keydown', handleKeyDown)
+  }, [resetView, localViewTargets.length])
 
   // All nodes for search (derived from rawData, not just visible nodes)
   const searchableNodes = useMemo(() => {
@@ -800,7 +983,8 @@ function App() {
 
     const vLayout = viewportLayoutRef.current
     const svg = d3.select(svgRef.current)
-    const width = window.innerWidth
+    // In split mode, Global View only takes the left portion
+    const width = viewMode === 'split' ? window.innerWidth * splitRatio : window.innerWidth
     const height = window.innerHeight
     svg.attr('width', width).attr('height', height)
 
@@ -812,7 +996,8 @@ function App() {
         .style('will-change', 'transform')
       // Create layer groups in correct z-order (first = back, last = front)
       g.append('g').attr('class', 'layer-rings')
-      g.append('g').attr('class', 'layer-glow')  // Glow layer for search highlights
+      g.append('g').attr('class', 'layer-glow-local')  // Cyan glow for Local View nodes
+      g.append('g').attr('class', 'layer-glow')  // Glow layer for search highlights (yellow)
       g.append('g').attr('class', 'layer-edges')
       g.append('g').attr('class', 'layer-nodes')
       g.append('g').attr('class', 'layer-labels')
@@ -820,6 +1005,7 @@ function App() {
 
     // Get layer references
     const ringsLayer = g.select<SVGGElement>('g.layer-rings')
+    const localGlowLayer = g.select<SVGGElement>('g.layer-glow-local')
     const glowLayer = g.select<SVGGElement>('g.layer-glow')
     const edgesLayer = g.select<SVGGElement>('g.layer-edges')
     const nodesLayer = g.select<SVGGElement>('g.layer-nodes')
@@ -852,6 +1038,83 @@ function App() {
       svg.call(zoom.transform, initialTransform)
       currentTransformRef.current = initialTransform
     }
+
+    // Check if we need to recalculate zoom based on view mode or split ratio changes
+    const prevViewMode = prevViewModeForVizRef.current
+    const prevSplitRatio = prevSplitRatioRef.current
+
+    // Helper: Calculate transform to fit highlighted nodes (Local View nodes) tightly
+    const calculateHighlightedFitTransform = (containerWidth: number, containerHeight: number): d3.ZoomTransform | null => {
+      if (localViewNodeIds.size === 0) return null
+
+      const highlightedNodes = visibleNodes.filter(n => localViewNodeIds.has(n.id))
+      if (highlightedNodes.length === 0) return null
+
+      // Calculate bounding box of highlighted nodes + root (0,0)
+      const allXs = highlightedNodes.map(n => n.x)
+      const allYs = highlightedNodes.map(n => n.y)
+
+      const boundsMinX = Math.min(0, ...allXs)
+      const boundsMaxX = Math.max(0, ...allXs)
+      const boundsMinY = Math.min(0, ...allYs)
+      const boundsMaxY = Math.max(0, ...allYs)
+
+      const boundsWidth = boundsMaxX - boundsMinX
+      const boundsHeight = boundsMaxY - boundsMinY
+
+      const centerX = (boundsMinX + boundsMaxX) / 2
+      const centerY = (boundsMinY + boundsMaxY) / 2
+
+      // Tight padding (5% margin) to fill the screen
+      const padding = 0.05
+      const scaleX = containerWidth * (1 - 2 * padding) / Math.max(boundsWidth, 1)
+      const scaleY = containerHeight * (1 - 2 * padding) / Math.max(boundsHeight, 1)
+      const fitScale = Math.min(scaleX, scaleY, 3) // Cap at 3x zoom
+
+      const newX = containerWidth / 2 - centerX * fitScale
+      const newY = containerHeight / 2 - centerY * fitScale
+
+      return d3.zoomIdentity.translate(newX, newY).scale(fitScale)
+    }
+
+    // Case 1: Switched TO global-only mode from split/local - fit to highlighted nodes or all
+    const wasInSplitOrLocal = prevViewMode === 'split' || prevViewMode === 'local'
+    const nowInGlobalOnly = viewMode === 'global'
+    if (wasInSplitOrLocal && nowInGlobalOnly && zoomRef.current) {
+      const containerWidth = window.innerWidth
+      const containerHeight = window.innerHeight
+      const highlightedTransform = calculateHighlightedFitTransform(containerWidth, containerHeight)
+      const resetTransform = highlightedTransform || calculateInitialTransform(visibleNodes)
+      svg.transition().duration(300).call(zoomRef.current.transform, resetTransform)
+      currentTransformRef.current = resetTransform
+    }
+
+    // Case 2: Switched TO split view - fit to highlighted nodes in reduced width
+    const nowInSplit = viewMode === 'split'
+    const wasNotInSplit = prevViewMode !== 'split'
+    if (nowInSplit && wasNotInSplit && zoomRef.current) {
+      const containerWidth = window.innerWidth * splitRatio
+      const containerHeight = window.innerHeight
+      const highlightedTransform = calculateHighlightedFitTransform(containerWidth, containerHeight)
+      const resetTransform = highlightedTransform || calculateInitialTransform(visibleNodes, containerWidth, containerHeight)
+      svg.transition().duration(300).call(zoomRef.current.transform, resetTransform)
+      currentTransformRef.current = resetTransform
+    }
+
+    // Case 3: Split ratio changed significantly while in split view (>5% change)
+    const splitRatioChanged = Math.abs(splitRatio - prevSplitRatio) > 0.05
+    if (nowInSplit && splitRatioChanged && zoomRef.current) {
+      const containerWidth = window.innerWidth * splitRatio
+      const containerHeight = window.innerHeight
+      const highlightedTransform = calculateHighlightedFitTransform(containerWidth, containerHeight)
+      const resetTransform = highlightedTransform || calculateInitialTransform(visibleNodes, containerWidth, containerHeight)
+      svg.transition().duration(200).call(zoomRef.current.transform, resetTransform)
+      currentTransformRef.current = resetTransform
+    }
+
+    // Update refs for next render
+    prevViewModeForVizRef.current = viewMode
+    prevSplitRatioRef.current = splitRatio
 
     // Restore transform if not animating
     if (!isAnimatingZoomRef.current && currentTransformRef.current) {
@@ -908,13 +1171,28 @@ function App() {
     const prevVisibleIds = prevVisibleNodeIdsRef.current
     const currentVisibleIds = new Set(visibleNodes.map(n => n.id))
     const newNodeIds = new Set<string>()
-    const movingNodeIds = new Set<string>()
+    const existingNodeIds = new Set<string>()  // Nodes that existed before and still exist
+    const actuallyMovingNodeIds = new Set<string>()  // Nodes whose position actually changed
     const exitingNodeIds = new Set<string>()
+
+    // Threshold for considering a position "changed" (in pixels)
+    const POSITION_CHANGE_THRESHOLD = 1
+
     currentVisibleIds.forEach(id => {
       if (!prevVisibleIds.has(id)) {
         newNodeIds.add(id)
       } else {
-        movingNodeIds.add(id)
+        existingNodeIds.add(id)
+        // Check if position actually changed
+        const prevPos = nodePositionsRef.current.get(id)
+        const node = visibleNodes.find(n => n.id === id)
+        if (prevPos && node) {
+          const dx = Math.abs(node.x - prevPos.x)
+          const dy = Math.abs(node.y - prevPos.y)
+          if (dx > POSITION_CHANGE_THRESHOLD || dy > POSITION_CHANGE_THRESHOLD) {
+            actuallyMovingNodeIds.add(id)
+          }
+        }
       }
     })
     prevVisibleIds.forEach(id => {
@@ -927,7 +1205,7 @@ function App() {
     // EXPAND sequence: Rotation → Nodes/Edges enter → Text appears
     // COLLAPSE sequence: Text disappears → Nodes/Edges exit → Rotation
     const isCollapsing = exitingNodeIds.size > 0
-    const hasRotation = movingNodeIds.size > 0
+    const hasRotation = actuallyMovingNodeIds.size > 0
 
     const rotationDuration = 300
     const enterExitDuration = 300
@@ -943,7 +1221,7 @@ function App() {
     const collapseTextDelay = 0  // Text disappears immediately
     const collapseExitDelay = textFadeDuration  // Exit after text fades (150ms)
     const collapseExitEndTime = collapseExitDelay + exitDuration  // When collapse finishes (350ms)
-    const collapseRotationDelay = collapseExitEndTime + 100  // Start rotation after collapse + buffer (450ms)
+    const collapseRotationDelay = collapseExitEndTime + 50  // Start rotation after collapse + buffer (400ms)
 
     // Build node map
     const nodeMap = new Map<string, ExpandableNode>()
@@ -991,41 +1269,417 @@ function App() {
         exit => exit.remove()
       )
 
+    // === GLOW ANIMATION TIMING ===
+    // Glows must wait until nodes finish ALL animation before appearing
+    const isAnimating = isCollapsing || newNodeIds.size > 0 || actuallyMovingNodeIds.size > 0
+
+    // Calculate when all node animations complete
+    // COLLAPSE: text fade → exit → rotation
+    // EXPAND: rotation → enter → text fade
+    const nodeAnimationEndTime = isCollapsing
+      ? (hasRotation ? collapseRotationDelay + rotationDuration : collapseExitEndTime)
+      : (hasRotation ? expandEnterDelay + enterExitDuration : enterExitDuration)
+
+    // Glows appear after ALL node animations complete
+    const glowReappearDelay = isAnimating ? nodeAnimationEndTime + 50 : 0
+
+    // For collapse: glows follow nodes during rotation phase
+    // For expand: glows wait until nodes finish entering before appearing
+    const glowRotationDelay = isCollapsing ? collapseRotationDelay : 0
+    const expandGlowDelay = hasRotation ? expandEnterDelay + enterExitDuration : enterExitDuration
+
     // === GLOW CIRCLES for search highlight ===
     const highlightedNodes = visibleNodes.filter(n => highlightedPath.has(n.id))
     const glowSelection = glowLayer.selectAll<SVGCircleElement, ExpandableNode>('circle.glow')
       .data(highlightedNodes, d => d.id)
 
-    // Remove old glows with fade out
-    glowSelection.exit()
-      .transition()
-      .duration(200)
-      .attr('opacity', 0)
-      .remove()
+    // Remove old glows immediately
+    glowSelection.exit().remove()
 
-    // Update existing glows (for rotation/movement)
-    const glowScale = 1.25  // 25% larger than node
-    glowSelection
+    // Only animate glows for nodes that ACTUALLY move - stationary nodes keep their glow visible
+    const glowsToAnimate = glowSelection.filter(d => actuallyMovingNodeIds.has(d.id))
+    const glowsToKeepVisible = glowSelection.filter(d => !actuallyMovingNodeIds.has(d.id))
+
+    // Stationary glows - just update position immediately, stay visible
+    glowsToKeepVisible
       .attr('cx', d => d.x)
       .attr('cy', d => d.y)
-      .attr('r', d => getSize(d) * glowScale)
+      .attr('r', d => getSize(d) + 3)
 
-    // Add new glows - tighter ring around node
-    glowSelection.enter()
+    // Moving glows - check actual DOM position vs target to determine if animation needed
+    if (actuallyMovingNodeIds.size > 0) {
+      // Check each glow's node's ACTUAL DOM position vs target
+      glowsToAnimate.each(function(d) {
+        const glowEl = d3.select(this)
+        const nodeEl = nodesLayer.select<SVGCircleElement>(`circle.node[data-id="${d.id}"]`)
+
+        if (!nodeEl.empty()) {
+          const nodeCx = parseFloat(nodeEl.attr('cx') || '0')
+          const nodeCy = parseFloat(nodeEl.attr('cy') || '0')
+          const targetX = d.x
+          const targetY = d.y
+
+          // Check if node actually needs to move (compare DOM position to target)
+          const dx = Math.abs(targetX - nodeCx)
+          const dy = Math.abs(targetY - nodeCy)
+          const nodeActuallyMoves = dx > POSITION_CHANGE_THRESHOLD || dy > POSITION_CHANGE_THRESHOLD
+
+          if (nodeActuallyMoves) {
+            // Sync glow to node's current DOM position, then animate
+            glowEl
+              .attr('cx', nodeCx)
+              .attr('cy', nodeCy)
+              .attr('opacity', 0)
+              .transition('glow-move')
+              .delay(glowRotationDelay)
+              .duration(rotationDuration)
+              .ease(d3.easeCubicOut)
+              .attr('cx', targetX)
+              .attr('cy', targetY)
+              .attr('r', getSize(d) + 3)
+
+            glowEl
+              .transition('glow-show')
+              .delay(glowReappearDelay)
+              .duration(200)
+              .attr('opacity', 0.35)
+          } else {
+            // Node isn't actually moving - just update glow position, keep visible
+            glowEl
+              .attr('cx', targetX)
+              .attr('cy', targetY)
+              .attr('r', getSize(d) + 3)
+          }
+        }
+      })
+    }
+
+    // Add new glows - subtle styling (RED for search)
+    // During collapse: start at OLD position, animate with nodes, then fade in
+    // During expand: wait until node finishes entering, then fade in at final position
+    const hasAnyAnimation = isCollapsing || actuallyMovingNodeIds.size > 0 || newNodeIds.size > 0
+
+    const newSearchGlows = glowSelection.enter()
       .append('circle')
       .attr('class', 'glow')
-      .attr('cx', d => d.x)
-      .attr('cy', d => d.y)
-      .attr('r', d => getSize(d) * glowScale)
+      .attr('cx', d => {
+        // During collapse, start at old position so glow follows node
+        if (isCollapsing) {
+          const prevPos = nodePositionsRef.current.get(d.id)
+          return prevPos?.x ?? d.x
+        }
+        // During expand, start at final position (will fade in after node enters)
+        return d.x
+      })
+      .attr('cy', d => {
+        if (isCollapsing) {
+          const prevPos = nodePositionsRef.current.get(d.id)
+          return prevPos?.y ?? d.y
+        }
+        return d.y
+      })
+      .attr('r', d => getSize(d) + 3)
       .attr('fill', 'none')
-      .attr('stroke', d => DOMAIN_COLORS[d.semanticPath.domain] || '#9E9E9E')
-      .attr('stroke-width', d => Math.max(1.5, getSize(d) * 0.15))  // Stroke scales with node
-      .attr('opacity', 0)
+      .attr('stroke', '#F44336')  // Red for search highlights
+      .attr('stroke-width', 3)
+      .attr('opacity', 0)  // Start hidden
       .style('filter', 'blur(2px)')
       .style('pointer-events', 'none')
-      .transition()
-      .duration(300)
-      .attr('opacity', 0.8)
+
+    // Animate glows based on whether their SPECIFIC node's DOM position differs from target
+    if (isCollapsing) {
+      // COLLAPSE: check each glow's node's actual DOM position
+      newSearchGlows.each(function(d) {
+        const glowEl = d3.select(this)
+        const nodeEl = nodesLayer.select<SVGCircleElement>(`circle.node[data-id="${d.id}"]`)
+
+        if (!nodeEl.empty()) {
+          const nodeCx = parseFloat(nodeEl.attr('cx') || '0')
+          const nodeCy = parseFloat(nodeEl.attr('cy') || '0')
+          const targetX = d.x
+          const targetY = d.y
+
+          // Check if node actually needs to move
+          const dx = Math.abs(targetX - nodeCx)
+          const dy = Math.abs(targetY - nodeCy)
+          const nodeActuallyMoves = dx > POSITION_CHANGE_THRESHOLD || dy > POSITION_CHANGE_THRESHOLD
+
+          if (nodeActuallyMoves) {
+            // Node is moving: animate from current position to target
+            glowEl
+              .attr('cx', nodeCx)
+              .attr('cy', nodeCy)
+              .transition('new-glow-position')
+              .delay(glowRotationDelay)
+              .duration(rotationDuration)
+              .ease(d3.easeCubicOut)
+              .attr('cx', targetX)
+              .attr('cy', targetY)
+              .transition()
+              .duration(200)
+              .attr('opacity', 0.35)
+          } else {
+            // Node is stationary: snap to position, fade in after exit
+            glowEl
+              .attr('cx', targetX)
+              .attr('cy', targetY)
+              .transition()
+              .delay(collapseExitEndTime + 50)
+              .duration(200)
+              .attr('opacity', 0.35)
+          }
+        } else {
+          // Node not found, just fade in at target position
+          glowEl
+            .attr('cx', d.x)
+            .attr('cy', d.y)
+            .transition()
+            .delay(collapseExitEndTime + 50)
+            .duration(200)
+            .attr('opacity', 0.35)
+        }
+      })
+    } else if (hasAnyAnimation) {
+      // EXPAND: wait until nodes finish entering, then fade in
+      newSearchGlows
+        .transition('new-glow-expand')
+        .delay(expandGlowDelay + 50)
+        .duration(200)
+        .attr('opacity', 0.35)
+    } else {
+      // No animation - just fade in
+      newSearchGlows
+        .transition()
+        .duration(200)
+        .attr('opacity', 0.35)
+    }
+
+    // === GLOW for Local View nodes (different colors by role) ===
+    // Target: cyan, Input: orange, Output: purple
+    const LOCAL_GLOW_COLORS = {
+      target: '#00BCD4',  // Cyan
+      input: '#FF9800',   // Orange
+      output: '#9C27B0'   // Purple
+    }
+
+    // Create set of visible node IDs for quick lookup
+    const visibleNodeIds = new Set(visibleNodes.map(n => n.id))
+
+    // For nodes not visible, find their visible ancestor and glow that instead
+    // Map: visible node ID -> { node, role } (may aggregate multiple roles)
+    const glowTargets = new Map<string, { node: ExpandableNode; role: 'target' | 'input' | 'output' }>()
+
+    for (const [nodeId, role] of localViewNodeRoles.entries()) {
+      if (visibleNodeIds.has(nodeId)) {
+        // Node is visible, glow it directly
+        const node = visibleNodes.find(n => n.id === nodeId)
+        if (node) {
+          glowTargets.set(nodeId, { node, role })
+        }
+      } else {
+        // Node not visible, find visible ancestor
+        let currentId = nodeId
+        let foundAncestor: ExpandableNode | null = null
+
+        // Walk up the tree to find visible parent
+        while (!foundAncestor && currentId) {
+          const rawNode = rawData?.nodes.find(n => String(n.id) === currentId)
+          if (rawNode?.parent) {
+            const parentId = String(rawNode.parent)
+            if (visibleNodeIds.has(parentId)) {
+              foundAncestor = visibleNodes.find(n => n.id === parentId) || null
+            }
+            currentId = parentId
+          } else {
+            break
+          }
+        }
+
+        if (foundAncestor) {
+          // Use highest priority role (target > input > output)
+          const existing = glowTargets.get(foundAncestor.id)
+          if (!existing || (role === 'target') || (role === 'input' && existing.role === 'output')) {
+            glowTargets.set(foundAncestor.id, { node: foundAncestor, role })
+          }
+        }
+      }
+    }
+
+    const nodesToGlow = Array.from(glowTargets.values()).map(g => ({ ...g.node, glowRole: g.role }))
+
+    // Performance limit: max 50 nodes to prevent FPS drops
+    const MAX_GLOW_NODES = 50
+    const limitedNodesToGlow = nodesToGlow.length > MAX_GLOW_NODES
+      ? nodesToGlow.slice(0, MAX_GLOW_NODES)
+      : nodesToGlow
+
+    // Type for glow nodes with role
+    type GlowNode = ExpandableNode & { glowRole: 'target' | 'input' | 'output' }
+
+    const localGlowSelection = localGlowLayer
+      .selectAll<SVGCircleElement, GlowNode>('circle.glow-local')
+      .data(limitedNodesToGlow as GlowNode[], d => d.id)
+
+    // Remove old local glows immediately
+    localGlowSelection.exit().remove()
+
+    // Only animate glows for nodes that ACTUALLY move - stationary nodes keep their glow visible
+    const localGlowsToAnimate = localGlowSelection.filter(d => actuallyMovingNodeIds.has(d.id))
+    const localGlowsToKeepVisible = localGlowSelection.filter(d => !actuallyMovingNodeIds.has(d.id))
+
+    // Stationary local glows - just update position immediately, stay visible
+    localGlowsToKeepVisible
+      .attr('cx', d => d.x)
+      .attr('cy', d => d.y)
+      .attr('r', d => getSize(d) + 3)
+      .attr('stroke', d => LOCAL_GLOW_COLORS[d.glowRole])
+
+    // Moving local glows - check actual DOM position vs target to determine if animation needed
+    if (actuallyMovingNodeIds.size > 0) {
+      localGlowsToAnimate.each(function(d) {
+        const glowEl = d3.select(this)
+        const nodeEl = nodesLayer.select<SVGCircleElement>(`circle.node[data-id="${d.id}"]`)
+
+        if (!nodeEl.empty()) {
+          const nodeCx = parseFloat(nodeEl.attr('cx') || '0')
+          const nodeCy = parseFloat(nodeEl.attr('cy') || '0')
+          const targetX = d.x
+          const targetY = d.y
+
+          // Check if node actually needs to move (compare DOM position to target)
+          const dx = Math.abs(targetX - nodeCx)
+          const dy = Math.abs(targetY - nodeCy)
+          const nodeActuallyMoves = dx > POSITION_CHANGE_THRESHOLD || dy > POSITION_CHANGE_THRESHOLD
+
+          if (nodeActuallyMoves) {
+            // Sync glow to node's current DOM position, then animate
+            glowEl
+              .attr('cx', nodeCx)
+              .attr('cy', nodeCy)
+              .attr('opacity', 0)
+              .transition('local-glow-move')
+              .delay(glowRotationDelay)
+              .duration(rotationDuration)
+              .ease(d3.easeCubicOut)
+              .attr('cx', targetX)
+              .attr('cy', targetY)
+              .attr('r', getSize(d) + 3)
+              .attr('stroke', LOCAL_GLOW_COLORS[d.glowRole])
+
+            glowEl
+              .transition('local-glow-show')
+              .delay(glowReappearDelay)
+              .duration(200)
+              .attr('opacity', 0.35)
+          } else {
+            // Node isn't actually moving - just update glow position, keep visible
+            glowEl
+              .attr('cx', targetX)
+              .attr('cy', targetY)
+              .attr('r', getSize(d) + 3)
+              .attr('stroke', LOCAL_GLOW_COLORS[d.glowRole])
+          }
+        }
+      })
+    }
+
+    // Add new local glows
+    // During collapse: start at OLD position, animate with nodes, then fade in
+    // During expand: wait until node finishes entering, then fade in at final position
+    const newLocalGlows = localGlowSelection.enter()
+      .append('circle')
+      .attr('class', 'glow-local')
+      .attr('cx', d => {
+        // During collapse, start at old position so glow follows node
+        if (isCollapsing) {
+          const prevPos = nodePositionsRef.current.get(d.id)
+          return prevPos?.x ?? d.x
+        }
+        // During expand, start at final position
+        return d.x
+      })
+      .attr('cy', d => {
+        if (isCollapsing) {
+          const prevPos = nodePositionsRef.current.get(d.id)
+          return prevPos?.y ?? d.y
+        }
+        return d.y
+      })
+      .attr('r', d => getSize(d) + 3)
+      .attr('fill', 'none')
+      .attr('stroke', d => LOCAL_GLOW_COLORS[d.glowRole])
+      .attr('stroke-width', 3)
+      .attr('opacity', 0)  // Start hidden
+      .style('filter', 'blur(2px)')
+      .style('pointer-events', 'none')
+
+    // Animate glows based on whether their SPECIFIC node's DOM position differs from target
+    if (isCollapsing) {
+      // COLLAPSE: check each glow's node's actual DOM position
+      newLocalGlows.each(function(d) {
+        const glowEl = d3.select(this)
+        const nodeEl = nodesLayer.select<SVGCircleElement>(`circle.node[data-id="${d.id}"]`)
+
+        if (!nodeEl.empty()) {
+          const nodeCx = parseFloat(nodeEl.attr('cx') || '0')
+          const nodeCy = parseFloat(nodeEl.attr('cy') || '0')
+          const targetX = d.x
+          const targetY = d.y
+
+          // Check if node actually needs to move
+          const dx = Math.abs(targetX - nodeCx)
+          const dy = Math.abs(targetY - nodeCy)
+          const nodeActuallyMoves = dx > POSITION_CHANGE_THRESHOLD || dy > POSITION_CHANGE_THRESHOLD
+
+          if (nodeActuallyMoves) {
+            // Node is moving: animate from current position to target
+            glowEl
+              .attr('cx', nodeCx)
+              .attr('cy', nodeCy)
+              .transition('new-local-glow-position')
+              .delay(glowRotationDelay)
+              .duration(rotationDuration)
+              .ease(d3.easeCubicOut)
+              .attr('cx', targetX)
+              .attr('cy', targetY)
+              .transition()
+              .duration(200)
+              .attr('opacity', 0.35)
+          } else {
+            // Node is stationary: snap to position, fade in after exit
+            glowEl
+              .attr('cx', targetX)
+              .attr('cy', targetY)
+              .transition()
+              .delay(collapseExitEndTime + 50)
+              .duration(200)
+              .attr('opacity', 0.35)
+          }
+        } else {
+          // Node not found, just fade in at target position
+          glowEl
+            .attr('cx', d.x)
+            .attr('cy', d.y)
+            .transition()
+            .delay(collapseExitEndTime + 50)
+            .duration(200)
+            .attr('opacity', 0.35)
+        }
+      })
+    } else if (hasAnyAnimation) {
+      // EXPAND: wait until nodes finish entering, then fade in
+      newLocalGlows
+        .transition('new-local-glow-expand')
+        .delay(expandGlowDelay + 50)
+        .duration(200)
+        .attr('opacity', 0.35)
+    } else {
+      // No animation - just fade in
+      newLocalGlows
+        .transition()
+        .duration(200)
+        .attr('opacity', 0.35)
+    }
 
     // === EDGES with enter/update/exit ===
     const edgeKey = (d: StructuralEdge) => `${d.sourceId}-${d.targetId}`
@@ -1042,8 +1696,12 @@ function App() {
       .style('opacity', 0)
       .remove()
 
-    // Track collapse animation state to prevent re-renders from overriding
+    // Check if we're in the middle of a collapse animation (from a previous render)
+    // IMPORTANT: Check BEFORE setting new animation state
     const now = Date.now()
+    const inCollapseAnimation = collapseAnimationRef.current.inProgress && now < collapseAnimationRef.current.endTime
+
+    // Track collapse animation state to prevent re-renders from overriding
     if (isCollapsing && exitingNodeIds.size > 0) {
       // Start of collapse animation - mark it and set end time
       const totalCollapseTime = collapseRotationDelay + rotationDuration
@@ -1054,26 +1712,43 @@ function App() {
       }, totalCollapseTime + 50)
     }
 
-    // Check if we're in the middle of a collapse animation (from a previous render)
-    const inCollapseAnimation = collapseAnimationRef.current.inProgress && now < collapseAnimationRef.current.endTime
-
     // Update edges (animate to new positions)
-    // COLLAPSE: delay rotation until after exit; EXPAND: rotate immediately
-    // Skip if we're in a collapse animation and this is a subsequent render (no exiting nodes)
+    // Check each edge's actual DOM position vs target - animate if different
     const rotationDelay = isCollapsing ? collapseRotationDelay : 0
     const shouldSkipRotation = inCollapseAnimation && !isCollapsing
 
-    if (!shouldSkipRotation) {
-      edgeSelection
-        .transition('rotation')
-        .delay(rotationDelay)
-        .duration(rotationDuration)
-        .ease(d3.easeCubicOut)
-        .attr('x1', d => nodeMap.get(d.sourceId)?.x || 0)
-        .attr('y1', d => nodeMap.get(d.sourceId)?.y || 0)
-        .attr('x2', d => nodeMap.get(d.targetId)?.x || 0)
-        .attr('y2', d => nodeMap.get(d.targetId)?.y || 0)
-    }
+    edgeSelection.each(function(d) {
+      const edgeEl = d3.select(this)
+      const currentX1 = parseFloat(edgeEl.attr('x1') || '0')
+      const currentY1 = parseFloat(edgeEl.attr('y1') || '0')
+      const currentX2 = parseFloat(edgeEl.attr('x2') || '0')
+      const currentY2 = parseFloat(edgeEl.attr('y2') || '0')
+
+      const targetX1 = nodeMap.get(d.sourceId)?.x || 0
+      const targetY1 = nodeMap.get(d.sourceId)?.y || 0
+      const targetX2 = nodeMap.get(d.targetId)?.x || 0
+      const targetY2 = nodeMap.get(d.targetId)?.y || 0
+
+      // Check if edge actually needs to move
+      const dx1 = Math.abs(targetX1 - currentX1)
+      const dy1 = Math.abs(targetY1 - currentY1)
+      const dx2 = Math.abs(targetX2 - currentX2)
+      const dy2 = Math.abs(targetY2 - currentY2)
+      const needsMove = dx1 > POSITION_CHANGE_THRESHOLD || dy1 > POSITION_CHANGE_THRESHOLD ||
+                        dx2 > POSITION_CHANGE_THRESHOLD || dy2 > POSITION_CHANGE_THRESHOLD
+
+      if (needsMove || !shouldSkipRotation) {
+        edgeEl
+          .transition('rotation')
+          .delay(rotationDelay)
+          .duration(rotationDuration)
+          .ease(d3.easeCubicOut)
+          .attr('x1', targetX1)
+          .attr('y1', targetY1)
+          .attr('x2', targetX2)
+          .attr('y2', targetY2)
+      }
+    })
 
     // Enter edges (EXPAND: after rotation completes)
     edgeSelection.enter()
@@ -1120,19 +1795,41 @@ function App() {
       })
 
     // Update nodes (animate to new positions)
-    // COLLAPSE: delay rotation until after exit; EXPAND: rotate immediately
-    // Skip if we're in a collapse animation and this is a subsequent render
-    if (!shouldSkipRotation) {
-      nodeSelection
-        .transition('rotation')
-        .delay(rotationDelay)
-        .duration(rotationDuration)
-        .ease(d3.easeCubicOut)
-        .attr('cx', d => d.x)
-        .attr('cy', d => d.y)
-        .attr('r', d => getSize(d))
-        .attr('fill', d => getColor(d))
-    }
+    // Check each node's actual DOM position vs target - animate if different
+    nodeSelection.each(function(d) {
+      const nodeEl = d3.select(this)
+      const currentCx = parseFloat(nodeEl.attr('cx') || '0')
+      const currentCy = parseFloat(nodeEl.attr('cy') || '0')
+      const targetX = d.x
+      const targetY = d.y
+
+      // Check if node actually needs to move
+      const dx = Math.abs(targetX - currentCx)
+      const dy = Math.abs(targetY - currentCy)
+      const needsMove = dx > POSITION_CHANGE_THRESHOLD || dy > POSITION_CHANGE_THRESHOLD
+
+      if (needsMove) {
+        // Node position differs from target - animate to new position
+        nodeEl
+          .transition('rotation')
+          .delay(rotationDelay)
+          .duration(rotationDuration)
+          .ease(d3.easeCubicOut)
+          .attr('cx', targetX)
+          .attr('cy', targetY)
+          .attr('r', getSize(d))
+          .attr('fill', getColor(d))
+      } else if (!shouldSkipRotation) {
+        // Position matches but may need size/color update
+        nodeEl
+          .transition('rotation')
+          .delay(rotationDelay)
+          .duration(rotationDuration)
+          .ease(d3.easeCubicOut)
+          .attr('r', getSize(d))
+          .attr('fill', getColor(d))
+      }
+    })
 
     // Enter nodes (EXPAND: after rotation completes)
     nodeSelection.enter()
@@ -1172,7 +1869,7 @@ function App() {
     visibleNodes.forEach(n => nodeDataMap.set(n.id, n))
 
     // Remove old handlers and add new ones
-    g.on('click', null).on('mouseenter', null).on('mouseleave', null)
+    g.on('click', null).on('dblclick', null).on('mouseenter', null).on('mouseleave', null)
 
     g.on('click', (event) => {
       const target = event.target as Element
@@ -1198,6 +1895,18 @@ function App() {
         // Clicked on background - clear highlight
         if (highlightedPath.size > 0) {
           setHighlightedPath(new Set())
+        }
+      }
+    })
+    .on('dblclick', (event) => {
+      // Double-click to add node to Local View
+      const target = event.target as Element
+      if (target.classList.contains('node')) {
+        event.stopPropagation()
+        event.preventDefault()
+        const nodeId = target.getAttribute('data-id')
+        if (nodeId) {
+          addToLocalView(nodeId)
         }
       }
     })
@@ -1465,16 +2174,24 @@ function App() {
       .remove()
 
     // Update labels (move with rotation, update font-size for boost changes)
-    // Skip if we're in a collapse animation and this is a subsequent render
-    if (!shouldSkipRotation) {
-      labelSelection.each(function(d) {
-        const pos = labelPositions.get(d.id)
-        if (pos) {
-          const textEl = d3.select(this)
+    // Check each label's actual DOM position vs target - animate if different
+    labelSelection.each(function(d) {
+      const pos = labelPositions.get(d.id)
+      if (pos) {
+        const textEl = d3.select(this)
+        const currentX = parseFloat(textEl.attr('x') || '0')
+        const currentY = parseFloat(textEl.attr('y') || '0')
 
-          // Update data-fontsize for visibility calculations
-          textEl.attr('data-fontsize', pos.fontSize)
+        // Check if label actually needs to move
+        const dx = Math.abs(pos.x - currentX)
+        const dy = Math.abs(pos.y - currentY)
+        const needsMove = dx > POSITION_CHANGE_THRESHOLD || dy > POSITION_CHANGE_THRESHOLD
 
+        // Update data-fontsize for visibility calculations
+        textEl.attr('data-fontsize', pos.fontSize)
+
+        if (needsMove) {
+          // Label position differs from target - animate to new position
           textEl
             .transition('rotation')
             .delay(rotationDelay)
@@ -1484,18 +2201,26 @@ function App() {
             .attr('font-size', pos.fontSize)
             .attr('transform', pos.rotation !== 0 ? `rotate(${pos.rotation}, ${pos.x}, ${pos.y})` : null)
 
-          // Also update tspans (for multi-line labels) - they have their own x attribute
+          // Also update tspans (for multi-line labels)
           textEl.selectAll('tspan')
             .transition('rotation')
             .delay(rotationDelay)
             .duration(rotationDuration)
             .attr('x', pos.x)
+        } else if (!shouldSkipRotation) {
+          // Position matches but may need font-size/rotation update
+          textEl
+            .transition('rotation')
+            .delay(rotationDelay)
+            .duration(rotationDuration)
+            .attr('font-size', pos.fontSize)
+            .attr('transform', pos.rotation !== 0 ? `rotate(${pos.rotation}, ${pos.x}, ${pos.y})` : null)
         }
-      })
+      }
+    })
 
-      // Update visibility after font sizes change
-      updateLabelVisibility(currentScale)
-    }
+    // Update visibility after font sizes change
+    updateLabelVisibility(currentScale)
 
     // Enter labels (EXPAND: fade in last, after nodes appear)
     labelSelection.enter()
@@ -1540,7 +2265,7 @@ function App() {
         return isLabelVisible(d.ring, pos.fontSize, currentScale) ? 1 : 0
       })
 
-  }, [visibleNodes, visibleEdges, computedRingsState, ringConfigs, expandedNodes, toggleExpansion, resetView, ringRadii, layoutValues, calculateInitialTransform, highlightedPath, nodesByRingMemo])
+  }, [visibleNodes, visibleEdges, computedRingsState, ringConfigs, expandedNodes, toggleExpansion, resetView, ringRadii, layoutValues, calculateInitialTransform, highlightedPath, nodesByRingMemo, addToLocalView, localViewNodeIds, localViewNodeRoles, localViewTargets, viewMode, splitRatio])
 
   // Fetch data once on mount
   useEffect(() => {
@@ -1587,7 +2312,8 @@ function App() {
 
     const svg = d3.select(svgRef.current)
     const zoom = zoomRef.current
-    const width = window.innerWidth
+    // Use split-aware dimensions for zoom calculations
+    const width = viewMode === 'split' ? window.innerWidth * splitRatio : window.innerWidth
     const height = window.innerHeight
     const currentTransform = currentTransformRef.current || d3.zoomIdentity
 
@@ -1759,7 +2485,7 @@ function App() {
 
       requestAnimationFrame(animate)
     }, 100)  // Delay to let render complete
-  }, [visibleNodes, expandedNodes])
+  }, [visibleNodes, expandedNodes, viewMode, splitRatio])
 
   return (
     <div style={{ width: '100vw', height: '100vh', overflow: 'hidden', background: '#fafafa' }}>
@@ -1944,7 +2670,7 @@ function App() {
       )}
 
       {stats && (
-        <div style={{ position: 'absolute', top: 70, left: 10, background: 'white', padding: 12, borderRadius: 4, boxShadow: '0 2px 4px rgba(0,0,0,0.1)', fontSize: 13 }}>
+        <div style={{ position: 'absolute', top: 70, left: 10, background: 'white', padding: 12, borderRadius: 4, boxShadow: '0 2px 4px rgba(0,0,0,0.1)', fontSize: 13, zIndex: 50 }}>
           <div><strong>Visible:</strong> {visibleNodes.length.toLocaleString()} / {stats.nodes.toLocaleString()}</div>
           <div><strong>Outcomes:</strong> {stats.outcomes}</div>
           <div><strong>Drivers:</strong> {stats.drivers.toLocaleString()}</div>
@@ -1956,7 +2682,7 @@ function App() {
       )}
 
       {ringStats.length > 0 && (
-        <div style={{ position: 'absolute', top: 210, left: 10, background: 'white', padding: 12, borderRadius: 4, boxShadow: '0 2px 4px rgba(0,0,0,0.1)', fontSize: 12, maxWidth: 220 }}>
+        <div style={{ position: 'absolute', top: 210, left: 10, background: 'white', padding: 12, borderRadius: 4, boxShadow: '0 2px 4px rgba(0,0,0,0.1)', fontSize: 12, maxWidth: 220, zIndex: 50 }}>
           <div style={{ fontWeight: 'bold', marginBottom: 8, fontSize: 13 }}>Rings ({ringStats.length})</div>
           {ringStats.map((ring, i) => (
             <div key={i} style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center', marginBottom: 3, paddingBottom: 3, borderBottom: i < ringStats.length - 1 ? '1px solid #eee' : 'none' }}>
@@ -1993,9 +2719,9 @@ function App() {
         </div>
       )}
 
-      {/* Domain Legend - Top right */}
+      {/* Domain Legend - Left side under other controls */}
       {Object.keys(domainCounts).length > 0 && (
-        <div style={{ position: 'absolute', top: 70, right: 10, background: 'white', padding: 12, borderRadius: 4, boxShadow: '0 2px 4px rgba(0,0,0,0.1)' }}>
+        <div style={{ position: 'absolute', top: 460, left: 10, background: 'white', padding: 12, borderRadius: 4, boxShadow: '0 2px 4px rgba(0,0,0,0.1)', zIndex: 50 }}>
           <div style={{ fontWeight: 'bold', marginBottom: 8, fontSize: 13 }}>Domains</div>
           {Object.entries(domainCounts).sort((a, b) => b[1] - a[1]).map(([domain, count]) => (
             <div key={domain} style={{ display: 'flex', alignItems: 'center', marginBottom: 4 }}>
@@ -2007,29 +2733,101 @@ function App() {
         </div>
       )}
 
-      {/* Reset View Button - Top right */}
-      <button
-        onClick={resetView}
-        style={{
-          position: 'absolute',
-          top: 10,
-          right: 10,
-          padding: '8px 16px',
-          fontSize: 13,
-          fontWeight: 'bold',
-          cursor: 'pointer',
-          border: '1px solid #ccc',
-          borderRadius: 4,
-          background: 'white',
-          boxShadow: '0 2px 4px rgba(0,0,0,0.1)',
-          zIndex: 100
-        }}
-        title="Reset view to initial state (R or Home)"
-      >
-        Reset View
-      </button>
+      {/* View Tabs and Reset - Top right */}
+      <ViewTabs
+        activeView={viewMode}
+        onViewChange={setViewMode}
+        localTargetCount={localViewTargets.length}
+        onReset={resetView}
+      />
 
-      <svg ref={svgRef} style={{ width: '100%', height: '100%' }} />
+      {/* Views Container - handles split view layout */}
+      <div
+        className="split-container"
+        style={{
+          display: 'flex',
+          width: '100%',
+          height: '100%',
+          position: 'absolute',
+          top: 0,
+          left: 0
+        }}
+      >
+        {/* Global View */}
+        <div
+          style={{
+            width: viewMode === 'split' ? `${splitRatio * 100}%` : '100%',
+            height: '100%',
+            display: viewMode === 'local' ? 'none' : 'block',
+            position: 'relative',
+            flexShrink: 0
+          }}
+        >
+          <svg
+            ref={svgRef}
+            style={{
+              width: '100%',
+              height: '100%'
+            }}
+          />
+        </div>
+
+        {/* Draggable Divider */}
+        {viewMode === 'split' && (
+          <div
+            onMouseDown={handleDividerMouseDown}
+            style={{
+              width: 6,
+              height: '100%',
+              background: '#e0e0e0',
+              cursor: 'col-resize',
+              flexShrink: 0,
+              display: 'flex',
+              alignItems: 'center',
+              justifyContent: 'center',
+              zIndex: 60
+            }}
+            onMouseEnter={(e) => e.currentTarget.style.background = '#bbb'}
+            onMouseLeave={(e) => e.currentTarget.style.background = '#e0e0e0'}
+          >
+            <div style={{
+              width: 2,
+              height: 40,
+              background: '#999',
+              borderRadius: 1
+            }} />
+          </div>
+        )}
+
+        {/* Local View */}
+        <div
+          style={{
+            width: viewMode === 'split' ? `${(1 - splitRatio) * 100}%` : '100%',
+            height: '100%',
+            display: viewMode === 'global' ? 'none' : 'block',
+            position: 'relative',
+            flexShrink: 0
+          }}
+        >
+          {(viewMode === 'local' || viewMode === 'split') && rawData && (
+            <LocalView
+              targetIds={localViewTargets}
+              allEdges={rawData.edges}
+              nodeById={nodeByIdMap}
+              domainColors={DOMAIN_COLORS}
+              onRemoveTarget={removeFromLocalView}
+              onClearTargets={clearLocalViewTargets}
+              onSwitchToGlobal={() => setViewMode('global')}
+              onNavigateToNode={(nodeId) => {
+                // Add clicked node as new target
+                addToLocalView(nodeId)
+              }}
+              showGlow={viewMode === 'split'}
+              onBetaThresholdChange={setLocalViewBetaThreshold}
+            />
+          )}
+        </div>
+      </div>
 
       {/* FPS Counter (dev mode only) */}
       {import.meta.env.DEV && fps > 0 && (
