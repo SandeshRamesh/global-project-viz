@@ -1,0 +1,2425 @@
+{
+  "metadata": {
+    "description": "Sample Local View data for 2 target indicators",
+    "beta_threshold": 10.0,
+    "generated_from": "v2_1_visualization_final.json"
+  },
+  "targets": [
+    {
+      "id": "v2exl_legitperf_nr",
+      "label": "Executive Legitimacy Performance Data Coverage",
+      "sector": "Governance & Democracy",
+      "ring": 5
+    },
+    {
+      "id": "QUTP.2",
+      "label": "Qualified Teachers - Lower Secondary (%)",
+      "sector": "Education & Knowledge",
+      "ring": 5
+    }
+  ],
+  "nodes": [
+    {
+      "id": "ETOIP.1.PR",
+      "label": "Primary School Teacher Training and Support",
+      "sector": "Education & Knowledge",
+      "ring": 5
+    },
+    {
+      "id": "v2exl_legitperf_nr",
+      "label": "Executive Legitimacy Performance Data Coverage",
+      "sector": "Governance & Democracy",
+      "ring": 5
+    },
+    {
+      "id": "wdi_lfpedubm",
+      "label": "Labor Force Participation Rate, Basic Education, Male",
+      "sector": "Environment & Sustainability",
+      "ring": 5
+    },
+    {
+      "id": "pwt_hci",
+      "label": "Human Capital Development Index",
+      "sector": "Education & Knowledge",
+      "ring": 4
+    },
+    {
+      "id": "pwt_mi",
+      "label": "Import Share of GDP",
+      "sector": "Income & Living Standards",
+      "ring": 5
+    },
+    {
+      "id": "TX.VAL.MRCH.OR.ZS",
+      "label": "Exports Outside Home Region as Share of Total Exports",
+      "sector": "Employment & Work",
+      "ring": 5
+    },
+    {
+      "id": "wtbmpxi999",
+      "label": "Wealth Share of Bottom 50% (Individual)",
+      "sector": "Equality & Fairness",
+      "ring": 5
+    },
+    {
+      "id": "ihme_lifexp_0204m",
+      "label": "Life Expectancy for Ages 2-4 (Males)",
+      "sector": "Health & Longevity",
+      "ring": 5
+    },
+    {
+      "id": "ytbmpxi999",
+      "label": "Trade Balance as Share of National Income",
+      "sector": "Income & Living Standards",
+      "ring": 5
+    },
+    {
+      "id": "hc",
+      "label": "Human Capital Index",
+      "sector": "Employment & Work",
+      "ring": 5
+    },
+    {
+      "id": "e_v2xel_frefair_5C",
+      "label": "Free and Fair Elections Index (Extended Scale)",
+      "sector": "Infrastructure & Access",
+      "ring": 5
+    },
+    {
+      "id": "IT.MLT.MAIN.P2",
+      "label": "Fixed telephone lines per 100 people",
+      "sector": "Infrastructure & Access",
+      "ring": 5
+    },
+    {
+      "id": "v2smorgavgact_osp",
+      "label": "Civil Society Social Media Activity",
+      "sector": "Governance & Democracy",
+      "ring": 5
+    },
+    {
+      "id": "v2edteautonomy_ord",
+      "label": "Teacher Professional Autonomy",
+      "sector": "Education & Knowledge",
+      "ring": 5
+    },
+    {
+      "id": "wdi_empm",
+      "label": "Male Employment Rate",
+      "sector": "Infrastructure & Access",
+      "ring": 5
+    },
+    {
+      "id": "wdi_emp",
+      "label": "Employment Rate",
+      "sector": "Environment & Sustainability",
+      "ring": 5
+    },
+    {
+      "id": "wdi_empindm",
+      "label": "Male Employment in Industry",
+      "sector": "Environment & Sustainability",
+      "ring": 5
+    },
+    {
+      "id": "csh_i",
+      "label": "Investment Share of Economy",
+      "sector": "Income & Living Standards",
+      "ring": 5
+    },
+    {
+      "id": "pwt_tfpppp",
+      "label": "Total Factor Productivity Level",
+      "sector": "Income & Living Standards",
+      "ring": 5
+    },
+    {
+      "id": "OAEPG.2.GPV.M",
+      "label": "Alternative Education Programs for Out-of-School Boys (Middle School Age)",
+      "sector": "Education & Knowledge",
+      "ring": 5
+    },
+    {
+      "id": "wdi_empf",
+      "label": "Female Employment Rate",
+      "sector": "Environment & Sustainability",
+      "ring": 4
+    },
+    {
+      "id": "v2smgovsmmon_nr",
+      "label": "Government Social Media Monitoring Data Coverage",
+      "sector": "Governance & Democracy",
+      "ring": 5
+    },
+    {
+      "id": "wdi_lifexpm",
+      "label": "Life Expectancy - Men",
+      "sector": "Environment & Sustainability",
+      "ring": 5
+    },
+    {
+      "id": "GER.4.F",
+      "label": "Women's Enrollment Rate in Post-High School Technical Programs",
+      "sector": "Education & Knowledge",
+      "ring": 5
+    },
+    {
+      "id": "TX.VAL.MRCH.R4.ZS",
+      "label": "Trade with Middle East & North Africa (Percentage of Exports)",
+      "sector": "Employment & Work",
+      "ring": 5
+    },
+    {
+      "id": "SLE.1T2.M",
+      "label": "Boys' Expected Years in Primary School",
+      "sector": "Health & Longevity",
+      "ring": 4
+    },
+    {
+      "id": "v2pscnslnl_nr",
+      "label": "Political Party Consultation Data Quality",
+      "sector": "Governance & Democracy",
+      "ring": 5
+    },
+    {
+      "id": "v2psprlnks_nr",
+      "label": "Political Party Links Data Coverage",
+      "sector": "Governance & Democracy",
+      "ring": 5
+    },
+    {
+      "id": "ygsmhni999",
+      "label": "Government and Household Net Income",
+      "sector": "Income & Living Standards",
+      "ring": 5
+    },
+    {
+      "id": "SLE.4.F",
+      "label": "Expected Years of Post-Secondary Education for Women",
+      "sector": "Health & Longevity",
+      "ring": 4
+    },
+    {
+      "id": "v2lgfunds_osp",
+      "label": "Legislature Funding Adequacy (Expert Rating)",
+      "sector": "Infrastructure & Access",
+      "ring": 5
+    },
+    {
+      "id": "chisols_warlord",
+      "label": "Child Soldiers - Warlord/Rebel Recruitment",
+      "sector": "Safety & Security",
+      "ring": 4
+    },
+    {
+      "id": "TM.VAL.MRCH.HI.ZS",
+      "label": "Share of imports from wealthy countries",
+      "sector": "Income & Living Standards",
+      "ring": 5
+    },
+    {
+      "id": "NER.02.GPIA.CP",
+      "label": "Gender Equality in Lower Secondary School Enrollment",
+      "sector": "Education & Knowledge",
+      "ring": 5
+    },
+    {
+      "id": "ETOIP.02.PU.F",
+      "label": "Female Teacher Support in Pre-Primary Education",
+      "sector": "Education & Knowledge",
+      "ring": 5
+    },
+    {
+      "id": "v2xcl_prpty",
+      "label": "Property Rights Protection Index",
+      "sector": "Environment & Sustainability",
+      "ring": 5
+    },
+    {
+      "id": "LR.GALP.AG25T64.F",
+      "label": "Women's Literacy Rate (Ages 25-64)",
+      "sector": "Education & Knowledge",
+      "ring": 5
+    },
+    {
+      "id": "LR.GALP.AG15T99.GPIA",
+      "label": "Gender Gap in Adult Literacy Rates",
+      "sector": "Education & Knowledge",
+      "ring": 5
+    },
+    {
+      "id": "LR.GALP.AG25T64.GPIA",
+      "label": "Gender Equality in Adult Literacy (Ages 25-64)",
+      "sector": "Education & Knowledge",
+      "ring": 5
+    },
+    {
+      "id": "LR.GALP.AG65T99.F",
+      "label": "Literacy Rate Among Older Women",
+      "sector": "Education & Knowledge",
+      "ring": 5
+    },
+    {
+      "id": "EA.4T8.AG25T99.LPIA",
+      "label": "Secondary Education Completion - Location Gap",
+      "sector": "Education & Knowledge",
+      "ring": 5
+    },
+    {
+      "id": "EA.2T8.AG25T99.URB.GPIA",
+      "label": "Gender Balance in High School Education Among Urban Adults",
+      "sector": "Education & Knowledge",
+      "ring": 5
+    },
+    {
+      "id": "TM.VAL.MANF.ZS.UN",
+      "label": "Manufactured Goods as Share of Imports",
+      "sector": "Infrastructure & Access",
+      "ring": 5
+    },
+    {
+      "id": "yscirxi999",
+      "label": "Average Individual Social Security Income",
+      "sector": "Equality & Fairness",
+      "ring": 5
+    },
+    {
+      "id": "fi_sog_pd",
+      "label": "Government Size in Economy",
+      "sector": "Income & Living Standards",
+      "ring": 5
+    },
+    {
+      "id": "fi_index_pd",
+      "label": "Financial Development Index",
+      "sector": "Infrastructure & Access",
+      "ring": 5
+    },
+    {
+      "id": "ygmxhni999",
+      "label": "Mixed Income Per Person",
+      "sector": "Employment & Work",
+      "ring": 5
+    },
+    {
+      "id": "v2medpolnonstate_osp",
+      "label": "Non-State Political Media Coverage",
+      "sector": "Infrastructure & Access",
+      "ring": 5
+    },
+    {
+      "id": "v2medpolnonstate",
+      "label": "Media: Non-State Political Interference",
+      "sector": "Governance & Democracy",
+      "ring": 5
+    },
+    {
+      "id": "v2csanmvch_3",
+      "label": "Civil Society Anti-Government Movements (Category 3)",
+      "sector": "Governance & Democracy",
+      "ring": 5
+    },
+    {
+      "id": "v2peasbsoc_ord",
+      "label": "Social Group Equality in Society",
+      "sector": "Equality & Fairness",
+      "ring": 5
+    },
+    {
+      "id": "GER.1T2.GPIA",
+      "label": "Gender Equality in Primary School Enrollment",
+      "sector": "Education & Knowledge",
+      "ring": 5
+    },
+    {
+      "id": "GER.2.GPIA",
+      "label": "Middle School Gender Equality in Enrollment",
+      "sector": "Education & Knowledge",
+      "ring": 5
+    },
+    {
+      "id": "GER.1T3.GPIA",
+      "label": "Gender Balance in Early School Enrollment",
+      "sector": "Education & Knowledge",
+      "ring": 5
+    },
+    {
+      "id": "ygvahni999",
+      "label": "Government Housing Sector Contribution to Income",
+      "sector": "Infrastructure & Access",
+      "ring": 5
+    },
+    {
+      "id": "yfkpini999",
+      "label": "Individual Investment and Property Income",
+      "sector": "Income & Living Standards",
+      "ring": 5
+    },
+    {
+      "id": "ynmxhni999",
+      "label": "Average Individual Mixed Income",
+      "sector": "Equality & Fairness",
+      "ring": 5
+    },
+    {
+      "id": "fi_ftradeint_pd",
+      "label": "Foreign Trade Integration",
+      "sector": "Income & Living Standards",
+      "ring": 5
+    },
+    {
+      "id": "CR.1.RUR.F",
+      "label": "Primary School Completion Rate - Rural Girls",
+      "sector": "Education & Knowledge",
+      "ring": 5
+    },
+    {
+      "id": "CR.2",
+      "label": "Middle School Graduation Rate",
+      "sector": "Education & Knowledge",
+      "ring": 5
+    },
+    {
+      "id": "CR.2.RUR.Q5.F",
+      "label": "Lower Secondary Completion Rate - Rural Wealthy Girls",
+      "sector": "Education & Knowledge",
+      "ring": 5
+    },
+    {
+      "id": "CR.2.URB.Q3.M",
+      "label": "Lower Secondary Completion Rate - Urban Middle-Income Boys",
+      "sector": "Education & Knowledge",
+      "ring": 5
+    },
+    {
+      "id": "ETOIP.3.PR.GPIA",
+      "label": "Gender Balance in High School Teaching Staff",
+      "sector": "Education & Knowledge",
+      "ring": 5
+    },
+    {
+      "id": "1.1_ACCESS.ELECTRICITY.TOT",
+      "label": "Percentage of People with Electricity Access",
+      "sector": "Infrastructure & Access",
+      "ring": 4
+    },
+    {
+      "id": "SE.SEC.ENRL.FE.VO.ZS",
+      "label": "Girls in Job Training Programs (Secondary Level)",
+      "sector": "Education & Knowledge",
+      "ring": 4
+    },
+    {
+      "id": "v2peasjsoecon_osp",
+      "label": "Access to Justice by Economic Class (Expert Rating)",
+      "sector": "Equality & Fairness",
+      "ring": 5
+    },
+    {
+      "id": "SLE.4.M",
+      "label": "Expected Years of Education Beyond High School for Males",
+      "sector": "Health & Longevity",
+      "ring": 4
+    },
+    {
+      "id": "wdi_birthskill",
+      "label": "Births Attended by Skilled Health Personnel",
+      "sector": "Health & Longevity",
+      "ring": 5
+    },
+    {
+      "id": "CR.3",
+      "label": "High School Completion Rate (%)",
+      "sector": "Education & Knowledge",
+      "ring": 5
+    },
+    {
+      "id": "GER.5T8",
+      "label": "College Enrollment Rate (All Ages)",
+      "sector": "Education & Knowledge",
+      "ring": 5
+    },
+    {
+      "id": "ictd_soccon",
+      "label": "Social Security Contributions as Share of GDP",
+      "sector": "Income & Living Standards",
+      "ring": 5
+    },
+    {
+      "id": "pwt_csppp",
+      "label": "Capital Stock Per Person",
+      "sector": "Income & Living Standards",
+      "ring": 5
+    },
+    {
+      "id": "v2regoppgroupssize_nr",
+      "label": "Data Coverage: Opposition Group Size",
+      "sector": "Equality & Fairness",
+      "ring": 4
+    },
+    {
+      "id": "wdi_gertm",
+      "label": "Gross Enrollment Ratio, Tertiary, Male",
+      "sector": "Environment & Sustainability",
+      "ring": 5
+    },
+    {
+      "id": "ROFST.3.F.CP",
+      "label": "High School Dropout Rate - Girls",
+      "sector": "Education & Knowledge",
+      "ring": 5
+    },
+    {
+      "id": "SLE.1.GPIA",
+      "label": "Gender Equality in Elementary School Years",
+      "sector": "Education & Knowledge",
+      "ring": 4
+    },
+    {
+      "id": "ETOIP.02.PU.GPIA",
+      "label": "Teacher Training Gender Balance - Pre-Primary",
+      "sector": "Education & Knowledge",
+      "ring": 5
+    },
+    {
+      "id": "GTVP.3.GPV.GPIA",
+      "label": "Gender Balance in Vocational Education After High School",
+      "sector": "Education & Knowledge",
+      "ring": 5
+    },
+    {
+      "id": "v2pssunpar_nr",
+      "label": "Data Availability: Political Party Information",
+      "sector": "Governance & Democracy",
+      "ring": 5
+    },
+    {
+      "id": "v2psnatpar_nr",
+      "label": "Data Coverage: Nationalist Political Parties",
+      "sector": "Governance & Democracy",
+      "ring": 5
+    },
+    {
+      "id": "v2psplats_nr",
+      "label": "Political Party Platform Data Coverage",
+      "sector": "Governance & Democracy",
+      "ring": 5
+    },
+    {
+      "id": "v2pscohesv_nr",
+      "label": "Political Parties: Cohesion (Data Quality)",
+      "sector": "Governance & Democracy",
+      "ring": 5
+    },
+    {
+      "id": "wdi_lfpfne15",
+      "label": "Female Labor Force Participation Rate",
+      "sector": "Environment & Sustainability",
+      "ring": 5
+    },
+    {
+      "id": "v2ellocpwr_osp",
+      "label": "Elections: Local Government Power (Original Survey Scale)",
+      "sector": "Governance & Democracy",
+      "ring": 5
+    },
+    {
+      "id": "EA.3T8.AG25T99",
+      "label": "Adults with Middle School Education (Age 25+)",
+      "sector": "Education & Knowledge",
+      "ring": 5
+    },
+    {
+      "id": "wdi_sempf",
+      "label": "Self-Employed, Female (% of female employment)",
+      "sector": "Environment & Sustainability",
+      "ring": 5
+    },
+    {
+      "id": "CR.1.URB.Q3.F",
+      "label": "Primary School Completion - Urban Middle-Income Girls",
+      "sector": "Education & Knowledge",
+      "ring": 5
+    },
+    {
+      "id": "999988",
+      "label": "International Price Comparison - Category 999988",
+      "sector": "Income & Living Standards",
+      "ring": 5
+    },
+    {
+      "id": "ETOIP.3.PU.M",
+      "label": "Male Teacher Coverage in Public High Schools",
+      "sector": "Education & Knowledge",
+      "ring": 5
+    },
+    {
+      "id": "wdi_expedus",
+      "label": "Education Expenditure per Student - US Dollars",
+      "sector": "Environment & Sustainability",
+      "ring": 5
+    },
+    {
+      "id": "v2xel_frefair",
+      "label": "Free and Fair Elections Index",
+      "sector": "Governance & Democracy",
+      "ring": 5
+    },
+    {
+      "id": "GTVP.2T3.GPV",
+      "label": "Vocational Training Enrollment in Grades 7-9",
+      "sector": "Education & Knowledge",
+      "ring": 5
+    },
+    {
+      "id": "BM.GSR.TRAN.ZS",
+      "label": "Transportation Services Imported (% of Service Imports)",
+      "sector": "Infrastructure & Access",
+      "ring": 5
+    },
+    {
+      "id": "wscirxi999",
+      "label": "Wealth Impact of Social Security Contributions",
+      "sector": "Equality & Fairness",
+      "ring": 5
+    },
+    {
+      "id": "yrevgoi999",
+      "label": "Government Revenue as Share of National Income",
+      "sector": "Equality & Fairness",
+      "ring": 5
+    },
+    {
+      "id": "gdiincj992",
+      "label": "Household Income Distribution Index",
+      "sector": "Infrastructure & Access",
+      "ring": 4
+    },
+    {
+      "id": "gdiincj999",
+      "label": "Gender Development Index for Income",
+      "sector": "Environment & Sustainability",
+      "ring": 5
+    },
+    {
+      "id": "CR.1",
+      "label": "Primary School Completion Rate",
+      "sector": "Education & Knowledge",
+      "ring": 5
+    },
+    {
+      "id": "CR.2.RUR.M",
+      "label": "Middle School Completion Rate - Rural Boys (%)",
+      "sector": "Education & Knowledge",
+      "ring": 5
+    },
+    {
+      "id": "rdiincj992",
+      "label": "Disposable Income Comparison (1992 Prices)",
+      "sector": "Equality & Fairness",
+      "ring": 5
+    },
+    {
+      "id": "rdiincj999",
+      "label": "Disposable Income Comparison",
+      "sector": "Equality & Fairness",
+      "ring": 5
+    },
+    {
+      "id": "v2clgencl_ord",
+      "label": "Gender Equal Civil Liberties (Ordinal Scale)",
+      "sector": "Governance & Democracy",
+      "ring": 5
+    },
+    {
+      "id": "v2elpeace_ord",
+      "label": "Election Violence Level (Ordinal Scale)",
+      "sector": "Governance & Democracy",
+      "ring": 5
+    },
+    {
+      "id": "CR.2.LPIA",
+      "label": "Lower Secondary Completion Gap Between Urban and Rural Areas",
+      "sector": "Education & Knowledge",
+      "ring": 5
+    },
+    {
+      "id": "wdi_gertf",
+      "label": "Female Gross Enrollment Rate in Tertiary Education",
+      "sector": "Environment & Sustainability",
+      "ring": 5
+    },
+    {
+      "id": "1.3_ACCESS.ELECTRICITY.URBAN",
+      "label": "Urban Population with Electricity Access",
+      "sector": "Infrastructure & Access",
+      "ring": 5
+    },
+    {
+      "id": "wdi_gert",
+      "label": "Gross Enrollment Rate - Tertiary Education",
+      "sector": "Environment & Sustainability",
+      "ring": 5
+    },
+    {
+      "id": "e_v2xps_party_3C",
+      "label": "Political Party Strength Index",
+      "sector": "Governance & Democracy",
+      "ring": 5
+    },
+    {
+      "id": "CR.3.URB.Q3.M",
+      "label": "Upper Secondary Completion Rate for Middle-Class Urban Boys",
+      "sector": "Education & Knowledge",
+      "ring": 5
+    },
+    {
+      "id": "CR.3.RUR.Q5.F",
+      "label": "High School Completion Rate - Rural Girls from Wealthiest Families (%)",
+      "sector": "Education & Knowledge",
+      "ring": 5
+    },
+    {
+      "id": "GER.5T8.M",
+      "label": "College Enrollment Rate for Men",
+      "sector": "Education & Knowledge",
+      "ring": 5
+    },
+    {
+      "id": "wdi_acel",
+      "label": "Access to Clean Energy and Lighting",
+      "sector": "Environment & Sustainability",
+      "ring": 5
+    },
+    {
+      "id": "NERT.3.CP",
+      "label": "Age-Appropriate Students Enrolled in Upper Secondary School",
+      "sector": "Education & Knowledge",
+      "ring": 5
+    },
+    {
+      "id": "ytgmcxi999",
+      "label": "Tax Burden from Goods and Services",
+      "sector": "Equality & Fairness",
+      "ring": 5
+    },
+    {
+      "id": "wtgmcxi999",
+      "label": "Wealth Impact of Consumption Taxes",
+      "sector": "Equality & Fairness",
+      "ring": 5
+    },
+    {
+      "id": "SLE.4",
+      "label": "Expected Years of Post-Secondary Education",
+      "sector": "Health & Longevity",
+      "ring": 4
+    },
+    {
+      "id": "inyixxi999",
+      "label": "Individual Income Comparison Index",
+      "sector": "Employment & Work",
+      "ring": 5
+    },
+    {
+      "id": "v2dlencmps_ord",
+      "label": "Political Deliberation: Compromise and Negotiation",
+      "sector": "Governance & Democracy",
+      "ring": 5
+    },
+    {
+      "id": "v2regproreg_nr",
+      "label": "Pro-Regime Bias Data Coverage",
+      "sector": "Governance & Democracy",
+      "ring": 5
+    },
+    {
+      "id": "CR.2.URB.M",
+      "label": "Lower Secondary Completion Rate - Urban Boys",
+      "sector": "Education & Knowledge",
+      "ring": 5
+    },
+    {
+      "id": "CR.2.URB",
+      "label": "Middle School Graduation Rate - Urban Areas (%)",
+      "sector": "Education & Knowledge",
+      "ring": 5
+    },
+    {
+      "id": "v2casoe_nr",
+      "label": "Civil Society State of Emergency Data Coverage",
+      "sector": "Governance & Democracy",
+      "ring": 5
+    },
+    {
+      "id": "CR.1.RUR.M",
+      "label": "Primary School Completion Rate - Rural Boys",
+      "sector": "Education & Knowledge",
+      "ring": 5
+    },
+    {
+      "id": "NERT.3.GPIA",
+      "label": "Gender Equality in Upper Secondary Enrollment",
+      "sector": "Education & Knowledge",
+      "ring": 5
+    },
+    {
+      "id": "ETOIP.2.PU.GPIA",
+      "label": "Middle School Teacher Gender Balance Index",
+      "sector": "Education & Knowledge",
+      "ring": 5
+    },
+    {
+      "id": "CR.3.URB.M",
+      "label": "Percentage of Urban Boys Finishing High School",
+      "sector": "Education & Knowledge",
+      "ring": 5
+    },
+    {
+      "id": "CR.2.URB.F",
+      "label": "Girls' Lower Secondary Completion Rate in Cities",
+      "sector": "Education & Knowledge",
+      "ring": 5
+    },
+    {
+      "id": "CR.3.RUR.M",
+      "label": "High School Completion Rate - Rural Boys (%)",
+      "sector": "Education & Knowledge",
+      "ring": 5
+    },
+    {
+      "id": "XSPENDP.2.FDPUB.FNS",
+      "label": "Government Spending Per Female Student - Middle School",
+      "sector": "Education & Knowledge",
+      "ring": 5
+    },
+    {
+      "id": "v2smgovab",
+      "label": "Government Abuse of Social Media",
+      "sector": "Governance & Democracy",
+      "ring": 5
+    },
+    {
+      "id": "ROFST.H.3.URB.Q2",
+      "label": "Students Not in School - Urban Areas, Second-Poorest Families (%)",
+      "sector": "Education & Knowledge",
+      "ring": 5
+    },
+    {
+      "id": "v2smonex",
+      "label": "One-Sided Social Media Narratives",
+      "sector": "Governance & Democracy",
+      "ring": 5
+    },
+    {
+      "id": "LR.AG15T24.Q1.F",
+      "label": "Reading and Writing Skills - Young Women from Poorest Families",
+      "sector": "Education & Knowledge",
+      "ring": 5
+    },
+    {
+      "id": "ETOIP.2T3.PR.GPIA",
+      "label": "Gender Equality in Teacher Outreach (Grades 7-9)",
+      "sector": "Education & Knowledge",
+      "ring": 5
+    },
+    {
+      "id": "XSPENDP.5T8.FDPUB.FNCAP",
+      "label": "Government Spending per Female College Student",
+      "sector": "Education & Knowledge",
+      "ring": 5
+    },
+    {
+      "id": "ytsmpxi999",
+      "label": "Total Tax Burden (Market-Based Index)",
+      "sector": "Equality & Fairness",
+      "ring": 5
+    },
+    {
+      "id": "v2smgovab_osp",
+      "label": "Government Abuse of Social Media",
+      "sector": "Governance & Democracy",
+      "ring": 5
+    },
+    {
+      "id": "ynmxhoi999",
+      "label": "Mixed Income per Individual",
+      "sector": "Equality & Fairness",
+      "ring": 5
+    },
+    {
+      "id": "FI.RES.TOTL.MO",
+      "label": "Foreign currency reserves in months of imports",
+      "sector": "Environment & Sustainability",
+      "ring": 5
+    },
+    {
+      "id": "TM.VAL.TRAN.ZS.WT",
+      "label": "Transportation Services as Share of Service Imports",
+      "sector": "Infrastructure & Access",
+      "ring": 5
+    },
+    {
+      "id": "wtgxrxi999",
+      "label": "Government Wealth from Tax Revenue",
+      "sector": "Equality & Fairness",
+      "ring": 5
+    },
+    {
+      "id": "ETOIP.2T3.PR.M",
+      "label": "Male Teacher Outreach Programs - Secondary Schools",
+      "sector": "Education & Knowledge",
+      "ring": 5
+    },
+    {
+      "id": "v2canuni",
+      "label": "Civil Society Organizations in Universities",
+      "sector": "Governance & Democracy",
+      "ring": 5
+    },
+    {
+      "id": "QUTP.2",
+      "label": "Qualified Teachers - Lower Secondary (%)",
+      "sector": "Education & Knowledge",
+      "ring": 5
+    },
+    {
+      "id": "FS.AST.PRVT.GD.ZS",
+      "label": "Bank Lending to Businesses and Individuals",
+      "sector": "Income & Living Standards",
+      "ring": 5
+    },
+    {
+      "id": "FTP.3",
+      "label": "Full-Time High School Teachers",
+      "sector": "Education & Knowledge",
+      "ring": 5
+    },
+    {
+      "id": "AG.CON.FERT.ZS",
+      "label": "Fertilizer Use per Farm Area",
+      "sector": "Environment & Sustainability",
+      "ring": 5
+    },
+    {
+      "id": "wdi_elprodoil",
+      "label": "Electricity Production from Oil Sources",
+      "sector": "Environment & Sustainability",
+      "ring": 5
+    },
+    {
+      "id": "GFDD.DI.01",
+      "label": "Bank Lending to Private Sector (% of GDP)",
+      "sector": "Employment & Work",
+      "ring": 5
+    },
+    {
+      "id": "GFDD.DI.12",
+      "label": "Private lending as share of economy",
+      "sector": "Income & Living Standards",
+      "ring": 5
+    },
+    {
+      "id": "ETOIP.2T3.PR",
+      "label": "Teacher Training Programs - Lower Secondary",
+      "sector": "Education & Knowledge",
+      "ring": 5
+    },
+    {
+      "id": "CR.2.RUR",
+      "label": "Middle School Completion Rate - Rural Areas",
+      "sector": "Education & Knowledge",
+      "ring": 5
+    },
+    {
+      "id": "CR.2.URB.Q3",
+      "label": "Lower Secondary Completion - Urban Middle-Income Students",
+      "sector": "Education & Knowledge",
+      "ring": 5
+    },
+    {
+      "id": "CR.3.F",
+      "label": "Percentage of Girls Finishing High School",
+      "sector": "Education & Knowledge",
+      "ring": 5
+    },
+    {
+      "id": "CR.3.GPIA",
+      "label": "High School Completion Gender Equality Index",
+      "sector": "Education & Knowledge",
+      "ring": 5
+    },
+    {
+      "id": "EA.3T8.AG25T99.URB.M",
+      "label": "Urban Men with High School Education or Higher",
+      "sector": "Education & Knowledge",
+      "ring": 5
+    },
+    {
+      "id": "GFDD.DI.02",
+      "label": "Bank lending as share of economy (%)",
+      "sector": "Employment & Work",
+      "ring": 5
+    },
+    {
+      "id": "CR.3.URB.Q3",
+      "label": "Upper Secondary Completion Rate: Middle Income Urban Students",
+      "sector": "Education & Knowledge",
+      "ring": 5
+    },
+    {
+      "id": "X.US.4.FSGOV",
+      "label": "Government Spending Comparison Component",
+      "sector": "Safety & Security",
+      "ring": 4
+    },
+    {
+      "id": "FM.AST.PRVT.GD.ZS",
+      "label": "Bank Lending to Private Businesses (Percentage of Economy)",
+      "sector": "Income & Living Standards",
+      "ring": 5
+    },
+    {
+      "id": "FD.AST.PRVT.GD.ZS",
+      "label": "Bank Lending to Private Businesses",
+      "sector": "Income & Living Standards",
+      "ring": 5
+    },
+    {
+      "id": "EN.GHG.CO2.TR.MT.CE.AR5",
+      "label": "CO2 emissions from transportation",
+      "sector": "Environment & Sustainability",
+      "ring": 5
+    },
+    {
+      "id": "GER.3",
+      "label": "High School Enrollment Rate",
+      "sector": "Education & Knowledge",
+      "ring": 5
+    },
+    {
+      "id": "CR.3.URB.F",
+      "label": "High School Completion Rate for Urban Girls",
+      "sector": "Education & Knowledge",
+      "ring": 5
+    },
+    {
+      "id": "CR.2.GPIA",
+      "label": "Gender Gap in Lower Secondary Completion (Grades 7-9)",
+      "sector": "Education & Knowledge",
+      "ring": 5
+    },
+    {
+      "id": "CR.3.RUR.Q4",
+      "label": "Upper Secondary Completion - Rural Higher-Income Students",
+      "sector": "Education & Knowledge",
+      "ring": 5
+    },
+    {
+      "id": "SCHBSP.3.WHIVSEXED",
+      "label": "HIV and Sex Education Programs - Upper Secondary Schools",
+      "sector": "Health & Longevity",
+      "ring": 4
+    }
+  ],
+  "edges": [
+    {
+      "source": "ETOIP.1.PR",
+      "target": "v2exl_legitperf_nr",
+      "beta": 0.0914,
+      "type": "causal"
+    },
+    {
+      "source": "wdi_lfpedubm",
+      "target": "v2exl_legitperf_nr",
+      "beta": 0.1027,
+      "type": "causal"
+    },
+    {
+      "source": "pwt_hci",
+      "target": "v2exl_legitperf_nr",
+      "beta": 0.8512,
+      "type": "causal"
+    },
+    {
+      "source": "pwt_mi",
+      "target": "v2exl_legitperf_nr",
+      "beta": 2.4667,
+      "type": "causal"
+    },
+    {
+      "source": "TX.VAL.MRCH.OR.ZS",
+      "target": "v2exl_legitperf_nr",
+      "beta": 0.0937,
+      "type": "causal"
+    },
+    {
+      "source": "wtbmpxi999",
+      "target": "v2exl_legitperf_nr",
+      "beta": 1.858,
+      "type": "causal"
+    },
+    {
+      "source": "ihme_lifexp_0204m",
+      "target": "v2exl_legitperf_nr",
+      "beta": 0.2678,
+      "type": "causal"
+    },
+    {
+      "source": "ytbmpxi999",
+      "target": "v2exl_legitperf_nr",
+      "beta": 3.0807,
+      "type": "causal"
+    },
+    {
+      "source": "hc",
+      "target": "v2exl_legitperf_nr",
+      "beta": 0.6327,
+      "type": "causal"
+    },
+    {
+      "source": "e_v2xel_frefair_5C",
+      "target": "v2exl_legitperf_nr",
+      "beta": 0.0869,
+      "type": "causal"
+    },
+    {
+      "source": "IT.MLT.MAIN.P2",
+      "target": "v2exl_legitperf_nr",
+      "beta": 0.1421,
+      "type": "causal"
+    },
+    {
+      "source": "v2smorgavgact_osp",
+      "target": "v2exl_legitperf_nr",
+      "beta": 0.2882,
+      "type": "causal"
+    },
+    {
+      "source": "v2edteautonomy_ord",
+      "target": "v2exl_legitperf_nr",
+      "beta": 0.8412,
+      "type": "causal"
+    },
+    {
+      "source": "wdi_empm",
+      "target": "v2exl_legitperf_nr",
+      "beta": 0.1626,
+      "type": "causal"
+    },
+    {
+      "source": "wdi_emp",
+      "target": "v2exl_legitperf_nr",
+      "beta": 0.2515,
+      "type": "causal"
+    },
+    {
+      "source": "wdi_empindm",
+      "target": "v2exl_legitperf_nr",
+      "beta": 0.1491,
+      "type": "causal"
+    },
+    {
+      "source": "csh_i",
+      "target": "v2exl_legitperf_nr",
+      "beta": 3.5693,
+      "type": "causal"
+    },
+    {
+      "source": "pwt_tfpppp",
+      "target": "v2exl_legitperf_nr",
+      "beta": 0.1345,
+      "type": "causal"
+    },
+    {
+      "source": "OAEPG.2.GPV.M",
+      "target": "v2exl_legitperf_nr",
+      "beta": 0.4193,
+      "type": "causal"
+    },
+    {
+      "source": "wdi_empf",
+      "target": "v2exl_legitperf_nr",
+      "beta": 0.6088,
+      "type": "causal"
+    },
+    {
+      "source": "v2smgovsmmon_nr",
+      "target": "v2exl_legitperf_nr",
+      "beta": 0.2552,
+      "type": "causal"
+    },
+    {
+      "source": "wdi_lifexpm",
+      "target": "v2exl_legitperf_nr",
+      "beta": 0.4509,
+      "type": "causal"
+    },
+    {
+      "source": "GER.4.F",
+      "target": "v2exl_legitperf_nr",
+      "beta": 0.1479,
+      "type": "causal"
+    },
+    {
+      "source": "TX.VAL.MRCH.R4.ZS",
+      "target": "v2exl_legitperf_nr",
+      "beta": 0.0978,
+      "type": "causal"
+    },
+    {
+      "source": "SLE.1T2.M",
+      "target": "v2exl_legitperf_nr",
+      "beta": 0.3489,
+      "type": "causal"
+    },
+    {
+      "source": "v2pscnslnl_nr",
+      "target": "v2exl_legitperf_nr",
+      "beta": 0.1172,
+      "type": "causal"
+    },
+    {
+      "source": "v2psprlnks_nr",
+      "target": "v2exl_legitperf_nr",
+      "beta": 0.1148,
+      "type": "causal"
+    },
+    {
+      "source": "ygsmhni999",
+      "target": "v2exl_legitperf_nr",
+      "beta": 0.0798,
+      "type": "causal"
+    },
+    {
+      "source": "SLE.4.F",
+      "target": "v2exl_legitperf_nr",
+      "beta": 3.4425,
+      "type": "causal"
+    },
+    {
+      "source": "v2lgfunds_osp",
+      "target": "v2exl_legitperf_nr",
+      "beta": 0.7568,
+      "type": "causal"
+    },
+    {
+      "source": "chisols_warlord",
+      "target": "v2exl_legitperf_nr",
+      "beta": 0.2105,
+      "type": "causal"
+    },
+    {
+      "source": "TM.VAL.MRCH.HI.ZS",
+      "target": "v2exl_legitperf_nr",
+      "beta": 0.1135,
+      "type": "causal"
+    },
+    {
+      "source": "NER.02.GPIA.CP",
+      "target": "v2exl_legitperf_nr",
+      "beta": 5.7542,
+      "type": "causal"
+    },
+    {
+      "source": "ETOIP.02.PU.F",
+      "target": "v2exl_legitperf_nr",
+      "beta": 0.1243,
+      "type": "causal"
+    },
+    {
+      "source": "v2xcl_prpty",
+      "target": "v2exl_legitperf_nr",
+      "beta": 1.6549,
+      "type": "causal"
+    },
+    {
+      "source": "LR.GALP.AG25T64.F",
+      "target": "v2exl_legitperf_nr",
+      "beta": 0.4691,
+      "type": "causal"
+    },
+    {
+      "source": "LR.GALP.AG15T99.GPIA",
+      "target": "v2exl_legitperf_nr",
+      "beta": 5.1536,
+      "type": "causal"
+    },
+    {
+      "source": "LR.GALP.AG25T64.GPIA",
+      "target": "v2exl_legitperf_nr",
+      "beta": 4.3435,
+      "type": "causal"
+    },
+    {
+      "source": "LR.GALP.AG65T99.F",
+      "target": "v2exl_legitperf_nr",
+      "beta": 0.2865,
+      "type": "causal"
+    },
+    {
+      "source": "EA.4T8.AG25T99.LPIA",
+      "target": "v2exl_legitperf_nr",
+      "beta": 1.0305,
+      "type": "causal"
+    },
+    {
+      "source": "EA.2T8.AG25T99.URB.GPIA",
+      "target": "v2exl_legitperf_nr",
+      "beta": 0.1336,
+      "type": "causal"
+    },
+    {
+      "source": "TM.VAL.MANF.ZS.UN",
+      "target": "v2exl_legitperf_nr",
+      "beta": 0.121,
+      "type": "causal"
+    },
+    {
+      "source": "yscirxi999",
+      "target": "v2exl_legitperf_nr",
+      "beta": 1.8318,
+      "type": "causal"
+    },
+    {
+      "source": "fi_sog_pd",
+      "target": "v2exl_legitperf_nr",
+      "beta": 1.984,
+      "type": "causal"
+    },
+    {
+      "source": "fi_index_pd",
+      "target": "v2exl_legitperf_nr",
+      "beta": 0.8241,
+      "type": "causal"
+    },
+    {
+      "source": "ygmxhni999",
+      "target": "v2exl_legitperf_nr",
+      "beta": 0.1213,
+      "type": "causal"
+    },
+    {
+      "source": "v2medpolnonstate_osp",
+      "target": "v2exl_legitperf_nr",
+      "beta": 1.4145,
+      "type": "causal"
+    },
+    {
+      "source": "v2medpolnonstate",
+      "target": "v2exl_legitperf_nr",
+      "beta": 1.3028,
+      "type": "causal"
+    },
+    {
+      "source": "v2csanmvch_3",
+      "target": "v2exl_legitperf_nr",
+      "beta": 1.9762,
+      "type": "causal"
+    },
+    {
+      "source": "v2peasbsoc_ord",
+      "target": "v2exl_legitperf_nr",
+      "beta": 0.1229,
+      "type": "causal"
+    },
+    {
+      "source": "GER.1T2.GPIA",
+      "target": "v2exl_legitperf_nr",
+      "beta": 3.226,
+      "type": "causal"
+    },
+    {
+      "source": "GER.2.GPIA",
+      "target": "v2exl_legitperf_nr",
+      "beta": 2.3439,
+      "type": "causal"
+    },
+    {
+      "source": "GER.1T3.GPIA",
+      "target": "v2exl_legitperf_nr",
+      "beta": 0.246,
+      "type": "causal"
+    },
+    {
+      "source": "ygvahni999",
+      "target": "v2exl_legitperf_nr",
+      "beta": 0.0962,
+      "type": "causal"
+    },
+    {
+      "source": "yfkpini999",
+      "target": "v2exl_legitperf_nr",
+      "beta": 0.2495,
+      "type": "causal"
+    },
+    {
+      "source": "ynmxhni999",
+      "target": "v2exl_legitperf_nr",
+      "beta": 0.1492,
+      "type": "causal"
+    },
+    {
+      "source": "fi_ftradeint_pd",
+      "target": "v2exl_legitperf_nr",
+      "beta": 0.4007,
+      "type": "causal"
+    },
+    {
+      "source": "CR.1.RUR.F",
+      "target": "v2exl_legitperf_nr",
+      "beta": 0.1139,
+      "type": "causal"
+    },
+    {
+      "source": "CR.2",
+      "target": "v2exl_legitperf_nr",
+      "beta": 0.171,
+      "type": "causal"
+    },
+    {
+      "source": "CR.2.RUR.Q5.F",
+      "target": "v2exl_legitperf_nr",
+      "beta": 0.2829,
+      "type": "causal"
+    },
+    {
+      "source": "CR.2.URB.Q3.M",
+      "target": "v2exl_legitperf_nr",
+      "beta": 0.1562,
+      "type": "causal"
+    },
+    {
+      "source": "ETOIP.3.PR.GPIA",
+      "target": "v2exl_legitperf_nr",
+      "beta": 1.4474,
+      "type": "causal"
+    },
+    {
+      "source": "1.1_ACCESS.ELECTRICITY.TOT",
+      "target": "v2exl_legitperf_nr",
+      "beta": 0.2103,
+      "type": "causal"
+    },
+    {
+      "source": "SE.SEC.ENRL.FE.VO.ZS",
+      "target": "v2exl_legitperf_nr",
+      "beta": 0.1305,
+      "type": "causal"
+    },
+    {
+      "source": "v2peasjsoecon_osp",
+      "target": "v2exl_legitperf_nr",
+      "beta": 0.169,
+      "type": "causal"
+    },
+    {
+      "source": "SLE.4.M",
+      "target": "v2exl_legitperf_nr",
+      "beta": 3.2967,
+      "type": "causal"
+    },
+    {
+      "source": "wdi_birthskill",
+      "target": "v2exl_legitperf_nr",
+      "beta": 0.1494,
+      "type": "causal"
+    },
+    {
+      "source": "CR.3",
+      "target": "v2exl_legitperf_nr",
+      "beta": 0.0976,
+      "type": "causal"
+    },
+    {
+      "source": "GER.5T8",
+      "target": "v2exl_legitperf_nr",
+      "beta": 0.0904,
+      "type": "causal"
+    },
+    {
+      "source": "ictd_soccon",
+      "target": "v2exl_legitperf_nr",
+      "beta": 0.0753,
+      "type": "causal"
+    },
+    {
+      "source": "pwt_csppp",
+      "target": "v2exl_legitperf_nr",
+      "beta": 0.1029,
+      "type": "causal"
+    },
+    {
+      "source": "v2regoppgroupssize_nr",
+      "target": "v2exl_legitperf_nr",
+      "beta": 0.316,
+      "type": "causal"
+    },
+    {
+      "source": "wdi_gertm",
+      "target": "v2exl_legitperf_nr",
+      "beta": 0.1195,
+      "type": "causal"
+    },
+    {
+      "source": "ROFST.3.F.CP",
+      "target": "v2exl_legitperf_nr",
+      "beta": 0.1436,
+      "type": "causal"
+    },
+    {
+      "source": "SLE.1.GPIA",
+      "target": "v2exl_legitperf_nr",
+      "beta": 3.0797,
+      "type": "causal"
+    },
+    {
+      "source": "ETOIP.02.PU.GPIA",
+      "target": "v2exl_legitperf_nr",
+      "beta": 1.0517,
+      "type": "causal"
+    },
+    {
+      "source": "GTVP.3.GPV.GPIA",
+      "target": "v2exl_legitperf_nr",
+      "beta": 3.8527,
+      "type": "causal"
+    },
+    {
+      "source": "v2pssunpar_nr",
+      "target": "v2exl_legitperf_nr",
+      "beta": 0.1141,
+      "type": "causal"
+    },
+    {
+      "source": "v2psnatpar_nr",
+      "target": "v2exl_legitperf_nr",
+      "beta": 0.1093,
+      "type": "causal"
+    },
+    {
+      "source": "v2psplats_nr",
+      "target": "v2exl_legitperf_nr",
+      "beta": 0.1125,
+      "type": "causal"
+    },
+    {
+      "source": "v2pscohesv_nr",
+      "target": "v2exl_legitperf_nr",
+      "beta": 0.1103,
+      "type": "causal"
+    },
+    {
+      "source": "wdi_lfpfne15",
+      "target": "v2exl_legitperf_nr",
+      "beta": 0.1204,
+      "type": "causal"
+    },
+    {
+      "source": "v2ellocpwr_osp",
+      "target": "v2exl_legitperf_nr",
+      "beta": 0.1307,
+      "type": "causal"
+    },
+    {
+      "source": "EA.3T8.AG25T99",
+      "target": "v2exl_legitperf_nr",
+      "beta": 0.0789,
+      "type": "causal"
+    },
+    {
+      "source": "wdi_sempf",
+      "target": "v2exl_legitperf_nr",
+      "beta": 0.081,
+      "type": "causal"
+    },
+    {
+      "source": "CR.1.URB.Q3.F",
+      "target": "v2exl_legitperf_nr",
+      "beta": 0.0767,
+      "type": "causal"
+    },
+    {
+      "source": "999988",
+      "target": "v2exl_legitperf_nr",
+      "beta": 0.1923,
+      "type": "causal"
+    },
+    {
+      "source": "ETOIP.3.PU.M",
+      "target": "v2exl_legitperf_nr",
+      "beta": 0.079,
+      "type": "causal"
+    },
+    {
+      "source": "wdi_expedus",
+      "target": "v2exl_legitperf_nr",
+      "beta": 0.1159,
+      "type": "causal"
+    },
+    {
+      "source": "v2xel_frefair",
+      "target": "v2exl_legitperf_nr",
+      "beta": 1.0537,
+      "type": "causal"
+    },
+    {
+      "source": "GTVP.2T3.GPV",
+      "target": "v2exl_legitperf_nr",
+      "beta": 0.1048,
+      "type": "causal"
+    },
+    {
+      "source": "BM.GSR.TRAN.ZS",
+      "target": "v2exl_legitperf_nr",
+      "beta": 0.0769,
+      "type": "causal"
+    },
+    {
+      "source": "wscirxi999",
+      "target": "v2exl_legitperf_nr",
+      "beta": 1.4879,
+      "type": "causal"
+    },
+    {
+      "source": "yrevgoi999",
+      "target": "v2exl_legitperf_nr",
+      "beta": 1.7714,
+      "type": "causal"
+    },
+    {
+      "source": "gdiincj992",
+      "target": "v2exl_legitperf_nr",
+      "beta": 1.7822,
+      "type": "causal"
+    },
+    {
+      "source": "gdiincj999",
+      "target": "v2exl_legitperf_nr",
+      "beta": 1.7822,
+      "type": "causal"
+    },
+    {
+      "source": "CR.1",
+      "target": "v2exl_legitperf_nr",
+      "beta": 0.1136,
+      "type": "causal"
+    },
+    {
+      "source": "CR.2.RUR.M",
+      "target": "v2exl_legitperf_nr",
+      "beta": 0.1312,
+      "type": "causal"
+    },
+    {
+      "source": "rdiincj992",
+      "target": "v2exl_legitperf_nr",
+      "beta": 0.1976,
+      "type": "causal"
+    },
+    {
+      "source": "rdiincj999",
+      "target": "v2exl_legitperf_nr",
+      "beta": 0.1976,
+      "type": "causal"
+    },
+    {
+      "source": "v2clgencl_ord",
+      "target": "v2exl_legitperf_nr",
+      "beta": 0.2291,
+      "type": "causal"
+    },
+    {
+      "source": "v2elpeace_ord",
+      "target": "v2exl_legitperf_nr",
+      "beta": 0.4595,
+      "type": "causal"
+    },
+    {
+      "source": "CR.2.LPIA",
+      "target": "v2exl_legitperf_nr",
+      "beta": 0.9736,
+      "type": "causal"
+    },
+    {
+      "source": "wdi_gertf",
+      "target": "v2exl_legitperf_nr",
+      "beta": 0.0915,
+      "type": "causal"
+    },
+    {
+      "source": "1.3_ACCESS.ELECTRICITY.URBAN",
+      "target": "v2exl_legitperf_nr",
+      "beta": 0.3708,
+      "type": "causal"
+    },
+    {
+      "source": "wdi_gert",
+      "target": "v2exl_legitperf_nr",
+      "beta": 0.1043,
+      "type": "causal"
+    },
+    {
+      "source": "e_v2xps_party_3C",
+      "target": "v2exl_legitperf_nr",
+      "beta": 1.2543,
+      "type": "causal"
+    },
+    {
+      "source": "CR.3.URB.Q3.M",
+      "target": "v2exl_legitperf_nr",
+      "beta": 0.119,
+      "type": "causal"
+    },
+    {
+      "source": "CR.3.RUR.Q5.F",
+      "target": "v2exl_legitperf_nr",
+      "beta": 0.1037,
+      "type": "causal"
+    },
+    {
+      "source": "GER.5T8.M",
+      "target": "v2exl_legitperf_nr",
+      "beta": 0.1001,
+      "type": "causal"
+    },
+    {
+      "source": "wdi_acel",
+      "target": "v2exl_legitperf_nr",
+      "beta": 0.2553,
+      "type": "causal"
+    },
+    {
+      "source": "NERT.3.CP",
+      "target": "v2exl_legitperf_nr",
+      "beta": 0.1614,
+      "type": "causal"
+    },
+    {
+      "source": "ytgmcxi999",
+      "target": "v2exl_legitperf_nr",
+      "beta": 0.0782,
+      "type": "causal"
+    },
+    {
+      "source": "wtgmcxi999",
+      "target": "v2exl_legitperf_nr",
+      "beta": 3.9374,
+      "type": "causal"
+    },
+    {
+      "source": "SLE.4",
+      "target": "v2exl_legitperf_nr",
+      "beta": 3.4892,
+      "type": "causal"
+    },
+    {
+      "source": "inyixxi999",
+      "target": "v2exl_legitperf_nr",
+      "beta": 1.0135,
+      "type": "causal"
+    },
+    {
+      "source": "v2dlencmps_ord",
+      "target": "v2exl_legitperf_nr",
+      "beta": 0.6958,
+      "type": "causal"
+    },
+    {
+      "source": "v2regproreg_nr",
+      "target": "v2exl_legitperf_nr",
+      "beta": 0.0973,
+      "type": "causal"
+    },
+    {
+      "source": "CR.2.URB.M",
+      "target": "v2exl_legitperf_nr",
+      "beta": 0.1373,
+      "type": "causal"
+    },
+    {
+      "source": "CR.2.URB",
+      "target": "v2exl_legitperf_nr",
+      "beta": 0.1378,
+      "type": "causal"
+    },
+    {
+      "source": "v2casoe_nr",
+      "target": "v2exl_legitperf_nr",
+      "beta": 0.2506,
+      "type": "causal"
+    },
+    {
+      "source": "CR.1.RUR.M",
+      "target": "v2exl_legitperf_nr",
+      "beta": 0.1518,
+      "type": "causal"
+    },
+    {
+      "source": "NERT.3.GPIA",
+      "target": "v2exl_legitperf_nr",
+      "beta": 0.5982,
+      "type": "causal"
+    },
+    {
+      "source": "ETOIP.2.PU.GPIA",
+      "target": "v2exl_legitperf_nr",
+      "beta": 0.4313,
+      "type": "causal"
+    },
+    {
+      "source": "CR.3.URB.M",
+      "target": "v2exl_legitperf_nr",
+      "beta": 0.1016,
+      "type": "causal"
+    },
+    {
+      "source": "CR.2.URB.F",
+      "target": "v2exl_legitperf_nr",
+      "beta": 0.1317,
+      "type": "causal"
+    },
+    {
+      "source": "CR.3.RUR.M",
+      "target": "v2exl_legitperf_nr",
+      "beta": 0.0772,
+      "type": "causal"
+    },
+    {
+      "source": "XSPENDP.2.FDPUB.FNS",
+      "target": "v2exl_legitperf_nr",
+      "beta": 0.109,
+      "type": "causal"
+    },
+    {
+      "source": "v2smgovab",
+      "target": "v2exl_legitperf_nr",
+      "beta": 0.2828,
+      "type": "causal"
+    },
+    {
+      "source": "ROFST.H.3.URB.Q2",
+      "target": "v2exl_legitperf_nr",
+      "beta": 0.0812,
+      "type": "causal"
+    },
+    {
+      "source": "v2smonex",
+      "target": "v2exl_legitperf_nr",
+      "beta": 0.5792,
+      "type": "causal"
+    },
+    {
+      "source": "LR.AG15T24.Q1.F",
+      "target": "v2exl_legitperf_nr",
+      "beta": 0.0824,
+      "type": "causal"
+    },
+    {
+      "source": "ETOIP.2T3.PR.GPIA",
+      "target": "v2exl_legitperf_nr",
+      "beta": 1.5824,
+      "type": "causal"
+    },
+    {
+      "source": "XSPENDP.5T8.FDPUB.FNCAP",
+      "target": "v2exl_legitperf_nr",
+      "beta": 0.1475,
+      "type": "causal"
+    },
+    {
+      "source": "ytsmpxi999",
+      "target": "v2exl_legitperf_nr",
+      "beta": 0.2188,
+      "type": "causal"
+    },
+    {
+      "source": "v2smgovab_osp",
+      "target": "v2exl_legitperf_nr",
+      "beta": 0.3663,
+      "type": "causal"
+    },
+    {
+      "source": "ynmxhoi999",
+      "target": "v2exl_legitperf_nr",
+      "beta": 0.121,
+      "type": "causal"
+    },
+    {
+      "source": "FI.RES.TOTL.MO",
+      "target": "v2exl_legitperf_nr",
+      "beta": 0.0951,
+      "type": "causal"
+    },
+    {
+      "source": "TM.VAL.TRAN.ZS.WT",
+      "target": "v2exl_legitperf_nr",
+      "beta": 0.0751,
+      "type": "causal"
+    },
+    {
+      "source": "wtgxrxi999",
+      "target": "v2exl_legitperf_nr",
+      "beta": 2.3439,
+      "type": "causal"
+    },
+    {
+      "source": "ETOIP.2T3.PR.M",
+      "target": "v2exl_legitperf_nr",
+      "beta": 0.0912,
+      "type": "causal"
+    },
+    {
+      "source": "v2exl_legitperf_nr",
+      "target": "v2canuni",
+      "beta": 0.1845,
+      "type": "causal"
+    },
+    {
+      "source": "TX.VAL.MRCH.OR.ZS",
+      "target": "QUTP.2",
+      "beta": 0.2968,
+      "type": "causal"
+    },
+    {
+      "source": "ihme_lifexp_0204m",
+      "target": "QUTP.2",
+      "beta": 0.7202,
+      "type": "causal"
+    },
+    {
+      "source": "e_v2xel_frefair_5C",
+      "target": "QUTP.2",
+      "beta": 0.136,
+      "type": "causal"
+    },
+    {
+      "source": "FS.AST.PRVT.GD.ZS",
+      "target": "QUTP.2",
+      "beta": 0.2177,
+      "type": "causal"
+    },
+    {
+      "source": "IT.MLT.MAIN.P2",
+      "target": "QUTP.2",
+      "beta": 0.5961,
+      "type": "causal"
+    },
+    {
+      "source": "v2smorgavgact_osp",
+      "target": "QUTP.2",
+      "beta": 0.4205,
+      "type": "causal"
+    },
+    {
+      "source": "v2edteautonomy_ord",
+      "target": "QUTP.2",
+      "beta": 7.0916,
+      "type": "causal"
+    },
+    {
+      "source": "FTP.3",
+      "target": "QUTP.2",
+      "beta": 0.3365,
+      "type": "causal"
+    },
+    {
+      "source": "wdi_emp",
+      "target": "QUTP.2",
+      "beta": 0.114,
+      "type": "causal"
+    },
+    {
+      "source": "wdi_empindm",
+      "target": "QUTP.2",
+      "beta": 0.9615,
+      "type": "causal"
+    },
+    {
+      "source": "GER.4.F",
+      "target": "QUTP.2",
+      "beta": 0.7162,
+      "type": "causal"
+    },
+    {
+      "source": "SLE.1T2.M",
+      "target": "QUTP.2",
+      "beta": 0.1164,
+      "type": "causal"
+    },
+    {
+      "source": "v2pscnslnl_nr",
+      "target": "QUTP.2",
+      "beta": 1.8292,
+      "type": "causal"
+    },
+    {
+      "source": "v2psprlnks_nr",
+      "target": "QUTP.2",
+      "beta": 1.8402,
+      "type": "causal"
+    },
+    {
+      "source": "SLE.4.F",
+      "target": "QUTP.2",
+      "beta": 0.2014,
+      "type": "causal"
+    },
+    {
+      "source": "EA.4T8.AG25T99.LPIA",
+      "target": "QUTP.2",
+      "beta": 0.4489,
+      "type": "causal"
+    },
+    {
+      "source": "TM.VAL.MANF.ZS.UN",
+      "target": "QUTP.2",
+      "beta": 0.4742,
+      "type": "causal"
+    },
+    {
+      "source": "AG.CON.FERT.ZS",
+      "target": "QUTP.2",
+      "beta": 0.094,
+      "type": "causal"
+    },
+    {
+      "source": "fi_sog_pd",
+      "target": "QUTP.2",
+      "beta": 5.9662,
+      "type": "causal"
+    },
+    {
+      "source": "fi_index_pd",
+      "target": "QUTP.2",
+      "beta": 5.1889,
+      "type": "causal"
+    },
+    {
+      "source": "wdi_elprodoil",
+      "target": "QUTP.2",
+      "beta": 0.3837,
+      "type": "causal"
+    },
+    {
+      "source": "ygmxhni999",
+      "target": "QUTP.2",
+      "beta": 0.4343,
+      "type": "causal"
+    },
+    {
+      "source": "v2medpolnonstate_osp",
+      "target": "QUTP.2",
+      "beta": 2.0661,
+      "type": "causal"
+    },
+    {
+      "source": "v2medpolnonstate",
+      "target": "QUTP.2",
+      "beta": 1.3708,
+      "type": "causal"
+    },
+    {
+      "source": "GER.1T2.GPIA",
+      "target": "QUTP.2",
+      "beta": 0.4476,
+      "type": "causal"
+    },
+    {
+      "source": "GFDD.DI.01",
+      "target": "QUTP.2",
+      "beta": 0.2867,
+      "type": "causal"
+    },
+    {
+      "source": "GFDD.DI.12",
+      "target": "QUTP.2",
+      "beta": 0.1909,
+      "type": "causal"
+    },
+    {
+      "source": "CR.1.RUR.F",
+      "target": "QUTP.2",
+      "beta": 0.1573,
+      "type": "causal"
+    },
+    {
+      "source": "ETOIP.2T3.PR",
+      "target": "QUTP.2",
+      "beta": 0.8176,
+      "type": "causal"
+    },
+    {
+      "source": "CR.2.RUR",
+      "target": "QUTP.2",
+      "beta": 0.1964,
+      "type": "causal"
+    },
+    {
+      "source": "CR.2.URB.Q3",
+      "target": "QUTP.2",
+      "beta": 0.5929,
+      "type": "causal"
+    },
+    {
+      "source": "1.1_ACCESS.ELECTRICITY.TOT",
+      "target": "QUTP.2",
+      "beta": 1.0373,
+      "type": "causal"
+    },
+    {
+      "source": "CR.3.F",
+      "target": "QUTP.2",
+      "beta": 0.9383,
+      "type": "causal"
+    },
+    {
+      "source": "wdi_birthskill",
+      "target": "QUTP.2",
+      "beta": 0.1889,
+      "type": "causal"
+    },
+    {
+      "source": "CR.3.GPIA",
+      "target": "QUTP.2",
+      "beta": 0.1992,
+      "type": "causal"
+    },
+    {
+      "source": "GER.5T8",
+      "target": "QUTP.2",
+      "beta": 0.4494,
+      "type": "causal"
+    },
+    {
+      "source": "EA.3T8.AG25T99.URB.M",
+      "target": "QUTP.2",
+      "beta": 0.255,
+      "type": "causal"
+    },
+    {
+      "source": "ictd_soccon",
+      "target": "QUTP.2",
+      "beta": 0.3649,
+      "type": "causal"
+    },
+    {
+      "source": "pwt_csppp",
+      "target": "QUTP.2",
+      "beta": 1.438,
+      "type": "causal"
+    },
+    {
+      "source": "wdi_gertm",
+      "target": "QUTP.2",
+      "beta": 0.4033,
+      "type": "causal"
+    },
+    {
+      "source": "ROFST.3.F.CP",
+      "target": "QUTP.2",
+      "beta": 0.1927,
+      "type": "causal"
+    },
+    {
+      "source": "v2pssunpar_nr",
+      "target": "QUTP.2",
+      "beta": 0.2555,
+      "type": "causal"
+    },
+    {
+      "source": "v2psnatpar_nr",
+      "target": "QUTP.2",
+      "beta": 0.2355,
+      "type": "causal"
+    },
+    {
+      "source": "v2psplats_nr",
+      "target": "QUTP.2",
+      "beta": 1.8896,
+      "type": "causal"
+    },
+    {
+      "source": "v2pscohesv_nr",
+      "target": "QUTP.2",
+      "beta": 1.8188,
+      "type": "causal"
+    },
+    {
+      "source": "wdi_lfpfne15",
+      "target": "QUTP.2",
+      "beta": 0.3055,
+      "type": "causal"
+    },
+    {
+      "source": "EA.3T8.AG25T99",
+      "target": "QUTP.2",
+      "beta": 0.5101,
+      "type": "causal"
+    },
+    {
+      "source": "wdi_sempf",
+      "target": "QUTP.2",
+      "beta": 0.5289,
+      "type": "causal"
+    },
+    {
+      "source": "wdi_expedus",
+      "target": "QUTP.2",
+      "beta": 1.1836,
+      "type": "causal"
+    },
+    {
+      "source": "v2xel_frefair",
+      "target": "QUTP.2",
+      "beta": 0.1724,
+      "type": "causal"
+    },
+    {
+      "source": "BM.GSR.TRAN.ZS",
+      "target": "QUTP.2",
+      "beta": 0.3678,
+      "type": "causal"
+    },
+    {
+      "source": "yrevgoi999",
+      "target": "QUTP.2",
+      "beta": 0.4742,
+      "type": "causal"
+    },
+    {
+      "source": "GFDD.DI.02",
+      "target": "QUTP.2",
+      "beta": 0.2109,
+      "type": "causal"
+    },
+    {
+      "source": "gdiincj992",
+      "target": "QUTP.2",
+      "beta": 0.4783,
+      "type": "causal"
+    },
+    {
+      "source": "gdiincj999",
+      "target": "QUTP.2",
+      "beta": 0.4783,
+      "type": "causal"
+    },
+    {
+      "source": "CR.2.RUR.M",
+      "target": "QUTP.2",
+      "beta": 1.3281,
+      "type": "causal"
+    },
+    {
+      "source": "rdiincj992",
+      "target": "QUTP.2",
+      "beta": 0.5067,
+      "type": "causal"
+    },
+    {
+      "source": "rdiincj999",
+      "target": "QUTP.2",
+      "beta": 0.5067,
+      "type": "causal"
+    },
+    {
+      "source": "v2elpeace_ord",
+      "target": "QUTP.2",
+      "beta": 3.6993,
+      "type": "causal"
+    },
+    {
+      "source": "wdi_gertf",
+      "target": "QUTP.2",
+      "beta": 0.4846,
+      "type": "causal"
+    },
+    {
+      "source": "1.3_ACCESS.ELECTRICITY.URBAN",
+      "target": "QUTP.2",
+      "beta": 0.3533,
+      "type": "causal"
+    },
+    {
+      "source": "wdi_gert",
+      "target": "QUTP.2",
+      "beta": 0.5249,
+      "type": "causal"
+    },
+    {
+      "source": "CR.3.URB.Q3.M",
+      "target": "QUTP.2",
+      "beta": 0.5486,
+      "type": "causal"
+    },
+    {
+      "source": "CR.3.RUR.Q5.F",
+      "target": "QUTP.2",
+      "beta": 0.4299,
+      "type": "causal"
+    },
+    {
+      "source": "CR.3.URB.Q3",
+      "target": "QUTP.2",
+      "beta": 0.1248,
+      "type": "causal"
+    },
+    {
+      "source": "GER.5T8.M",
+      "target": "QUTP.2",
+      "beta": 0.4122,
+      "type": "causal"
+    },
+    {
+      "source": "X.US.4.FSGOV",
+      "target": "QUTP.2",
+      "beta": 0.3454,
+      "type": "causal"
+    },
+    {
+      "source": "FM.AST.PRVT.GD.ZS",
+      "target": "QUTP.2",
+      "beta": 0.3249,
+      "type": "causal"
+    },
+    {
+      "source": "FD.AST.PRVT.GD.ZS",
+      "target": "QUTP.2",
+      "beta": 0.3185,
+      "type": "causal"
+    },
+    {
+      "source": "wdi_acel",
+      "target": "QUTP.2",
+      "beta": 0.1397,
+      "type": "causal"
+    },
+    {
+      "source": "NERT.3.CP",
+      "target": "QUTP.2",
+      "beta": 0.1719,
+      "type": "causal"
+    },
+    {
+      "source": "EN.GHG.CO2.TR.MT.CE.AR5",
+      "target": "QUTP.2",
+      "beta": 0.3001,
+      "type": "causal"
+    },
+    {
+      "source": "GER.3",
+      "target": "QUTP.2",
+      "beta": 0.5221,
+      "type": "causal"
+    },
+    {
+      "source": "SLE.4",
+      "target": "QUTP.2",
+      "beta": 0.1859,
+      "type": "causal"
+    },
+    {
+      "source": "CR.2.URB.M",
+      "target": "QUTP.2",
+      "beta": 0.3086,
+      "type": "causal"
+    },
+    {
+      "source": "CR.1.RUR.M",
+      "target": "QUTP.2",
+      "beta": 0.2952,
+      "type": "causal"
+    },
+    {
+      "source": "CR.3.URB.M",
+      "target": "QUTP.2",
+      "beta": 0.3437,
+      "type": "causal"
+    },
+    {
+      "source": "CR.3.URB.F",
+      "target": "QUTP.2",
+      "beta": 0.5597,
+      "type": "causal"
+    },
+    {
+      "source": "CR.2.URB.F",
+      "target": "QUTP.2",
+      "beta": 0.8922,
+      "type": "causal"
+    },
+    {
+      "source": "CR.3.RUR.M",
+      "target": "QUTP.2",
+      "beta": 0.2013,
+      "type": "causal"
+    },
+    {
+      "source": "CR.2.GPIA",
+      "target": "QUTP.2",
+      "beta": 0.2203,
+      "type": "causal"
+    },
+    {
+      "source": "v2smgovab",
+      "target": "QUTP.2",
+      "beta": 0.1334,
+      "type": "causal"
+    },
+    {
+      "source": "ROFST.H.3.URB.Q2",
+      "target": "QUTP.2",
+      "beta": 0.4722,
+      "type": "causal"
+    },
+    {
+      "source": "LR.AG15T24.Q1.F",
+      "target": "QUTP.2",
+      "beta": 0.192,
+      "type": "causal"
+    },
+    {
+      "source": "XSPENDP.5T8.FDPUB.FNCAP",
+      "target": "QUTP.2",
+      "beta": 0.6483,
+      "type": "causal"
+    },
+    {
+      "source": "v2smgovab_osp",
+      "target": "QUTP.2",
+      "beta": 0.1789,
+      "type": "causal"
+    },
+    {
+      "source": "ynmxhoi999",
+      "target": "QUTP.2",
+      "beta": 0.6421,
+      "type": "causal"
+    },
+    {
+      "source": "FI.RES.TOTL.MO",
+      "target": "QUTP.2",
+      "beta": 0.1789,
+      "type": "causal"
+    },
+    {
+      "source": "TM.VAL.TRAN.ZS.WT",
+      "target": "QUTP.2",
+      "beta": 0.3473,
+      "type": "causal"
+    },
+    {
+      "source": "CR.3.RUR.Q4",
+      "target": "QUTP.2",
+      "beta": 0.1879,
+      "type": "causal"
+    },
+    {
+      "source": "QUTP.2",
+      "target": "SCHBSP.3.WHIVSEXED",
+      "beta": 0.3357,
+      "type": "causal"
+    }
+  ]
+}
